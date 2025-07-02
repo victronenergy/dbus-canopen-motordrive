@@ -1,0 +1,12 @@
+services:
+  dbus-sevcon-build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./src:/workspace/src
+      - "${VELIB_PATH}:/workspace/velib"
+    container_name: dbus-sevcon-build
+    tty: true
+    stdin_open: true
+    command: bash
