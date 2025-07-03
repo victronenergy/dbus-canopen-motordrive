@@ -1,1 +1,7 @@
 .env
+.DS_Store
+obj
+mk
+build
+Makefile
+velib_path.mk
