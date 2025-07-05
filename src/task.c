@@ -16,8 +16,7 @@ static Device device;
 static veBool connected = veFalse;
 static veBool directionFlipped = veFalse;
 
-void taskEarlyInit(void)
-{
+void taskEarlyInit(void) {
     VeCanDriver *drv = veCanSkRegister();
     if (drv) {
         veCanDrvRegister(drv);
