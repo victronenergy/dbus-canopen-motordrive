@@ -40,4 +40,9 @@
 #define CFG_VARIANT_HEAP				1
 #define CFG_DBUS_NON_BLOCKING			1
 
+#define CFG_WITH_LOG                    1
+#define CFG_WITH_VE_WAIT                1
+#define CFG_WITH_VE_TIMER               1
+#define CFG_WITH_TIMER                  1
+
 #define CFG_WITH_VECAN_PRODUCT_NAMES	1
