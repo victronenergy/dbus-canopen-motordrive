@@ -1,13 +1,13 @@
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
-#include <velib/canhw/canhw_driver.h>
-#include <velib/utils/ve_logger.h>
-#include <velib/utils/ve_timer.h>
-#include <velib/platform/plt.h>
 #include <canopen.h>
+#include <ctype.h>
 #include <device.h>
 #include <sevcon.h>
+#include <stdio.h>
+#include <string.h>
+#include <velib/canhw/canhw_driver.h>
+#include <velib/platform/plt.h>
+#include <velib/utils/ve_logger.h>
+#include <velib/utils/ve_timer.h>
 
 static un8 nodeId = 1;
 static un16 task1sLastUpdate = 0;
@@ -16,25 +16,19 @@ static Device device;
 static veBool connected = veFalse;
 static veBool directionFlipped = veFalse;
 
-void taskEarlyInit(void)
-{
+void taskEarlyInit(void) {
     VeCanDriver *drv = veCanSkRegister();
-    if (drv)
-    {
+    if (drv) {
         veCanDrvRegister(drv);
     }
 }
 
-void taskInit(void)
-{
-}
+void taskInit(void) {}
 
-void connectDevice()
-{
+void connectDevice() {
     un32 serialNumber;
 
-    if (sevconFetchSerialNumber(nodeId, &serialNumber))
-    {
+    if (sevconFetchSerialNumber(nodeId, &serialNumber)) {
         return;
     }
 
@@ -42,14 +36,12 @@ void connectDevice()
     connected = veTrue;
 }
 
-void disconnectDevice()
-{
+void disconnectDevice() {
     destroyDevice(&device);
     connected = veFalse;
 }
 
-void task1s()
-{
+void task1s() {
     float batteryVoltage;
     float batteryCurrent;
     un32 engineRpm;
@@ -57,42 +49,32 @@ void task1s()
     un8 engineDirection;
     VeVariant v;
 
-    if (!connected)
-    {
+    if (!connected) {
         return;
     }
 
-    if (sevconFetchBatteryVoltage(nodeId, &batteryVoltage))
-    {
+    if (sevconFetchBatteryVoltage(nodeId, &batteryVoltage)) {
         disconnectDevice();
         return;
     }
-    if (sevconFetchBatteryCurrent(nodeId, &batteryCurrent))
-    {
+    if (sevconFetchBatteryCurrent(nodeId, &batteryCurrent)) {
         disconnectDevice();
         return;
     }
-    if (sevconFetchEngineRpm(nodeId, &engineRpm))
-    {
+    if (sevconFetchEngineRpm(nodeId, &engineRpm)) {
         disconnectDevice();
         return;
     }
-    if (sevconFetchEngineTemperature(nodeId, &engineTemperature))
-    {
+    if (sevconFetchEngineTemperature(nodeId, &engineTemperature)) {
         disconnectDevice();
         return;
     }
 
-    if (engineRpm > 0)
-    {
+    if (engineRpm > 0) {
         engineDirection = directionFlipped ? 1 : 2;
-    }
-    else if (engineRpm < 0)
-    {
+    } else if (engineRpm < 0) {
         engineDirection = directionFlipped ? 2 : 1;
-    }
-    else
-    {
+    } else {
         engineDirection = 0;
     }
 
@@ -103,38 +85,27 @@ void task1s()
     veItemOwnerSet(&device.direction, veVariantUn8(&v, engineDirection));
 }
 
-void task10s()
-{
-    if (connected)
-    {
+void task10s() {
+    if (connected) {
         return;
     }
 
-    if (sevconLogin(nodeId))
-    {
+    if (sevconLogin(nodeId)) {
         return;
     }
 
     connectDevice();
 }
 
-void taskUpdate(void)
-{
-    if (veTick1ms(&task1sLastUpdate, 1000))
-    {
+void taskUpdate(void) {
+    if (veTick1ms(&task1sLastUpdate, 1000)) {
         task1s();
     }
-    if (veTick1ms(&task10sLastUpdate, 10000))
-    {
+    if (veTick1ms(&task10sLastUpdate, 10000)) {
         task10s();
     }
 }
 
-void taskTick(void)
-{
-}
+void taskTick(void) {}
 
-char const *pltProgramVersion(void)
-{
-    return "v0.0";
-}
+char const *pltProgramVersion(void) { return "v0.0"; }
