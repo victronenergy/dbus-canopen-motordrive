@@ -1,5 +1,19 @@
 name: Check formatting
 
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - '**/*.c'
+      - '**/*.h'
+  pull_request:
+    branches:
+      - '**'
+    paths:
+      - '**/*.c'
+      - '**/*.h'
+
 jobs:
   clang-format:
     runs-on: ubuntu-latest
