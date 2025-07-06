@@ -11,11 +11,11 @@ typedef struct {
     un32 serialNumber;
 
     VeItem *root;
-    VeItem voltage;
-    VeItem current;
-    VeItem rpm;
-    VeItem direction;
-    VeItem temperature;
+    VeItem *voltage;
+    VeItem *current;
+    VeItem *rpm;
+    VeItem *direction;
+    VeItem *temperature;
 } Device;
 
 void createDevice(Device *device, un32 serialNumber);

@@ -3,6 +3,7 @@
 #include <device.h>
 #include <sevcon.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <velib/canhw/canhw_driver.h>
 #include <velib/platform/plt.h>
@@ -44,7 +45,7 @@ void disconnectDevice() {
 void task1s() {
     float batteryVoltage;
     float batteryCurrent;
-    un32 engineRpm;
+    sn16 engineRpm;
     un16 engineTemperature;
     un8 engineDirection;
     VeVariant v;
@@ -78,11 +79,11 @@ void task1s() {
         engineDirection = 0;
     }
 
-    veItemOwnerSet(&device.voltage, veVariantFloat(&v, batteryVoltage));
-    veItemOwnerSet(&device.current, veVariantFloat(&v, batteryCurrent));
-    veItemOwnerSet(&device.rpm, veVariantUn16(&v, engineRpm));
-    veItemOwnerSet(&device.temperature, veVariantUn16(&v, engineTemperature));
-    veItemOwnerSet(&device.direction, veVariantUn8(&v, engineDirection));
+    veItemOwnerSet(device.voltage, veVariantFloat(&v, batteryVoltage));
+    veItemOwnerSet(device.current, veVariantFloat(&v, batteryCurrent));
+    veItemOwnerSet(device.rpm, veVariantUn16(&v, abs(engineRpm)));
+    veItemOwnerSet(device.temperature, veVariantUn16(&v, engineTemperature));
+    veItemOwnerSet(device.direction, veVariantUn8(&v, engineDirection));
 }
 
 void task10s() {
@@ -98,6 +99,13 @@ void task10s() {
 }
 
 void taskUpdate(void) {
+    VeRawCanMsg msg;
+
+    while (veCanRead(&msg)) {
+        // needed to keep cpu usage down.
+        // @todo: ask for clarification
+    }
+
     if (veTick1ms(&task1sLastUpdate, 1000)) {
         task1s();
     }
@@ -106,6 +114,10 @@ void taskUpdate(void) {
     }
 }
 
-void taskTick(void) {}
+void taskTick(void) {
+    if (device.root) {
+        veItemTick(device.root);
+    }
+}
 
 char const *pltProgramVersion(void) { return "v0.0"; }

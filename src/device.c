@@ -77,22 +77,20 @@ void createDbusTree(Device *device) {
     veItemCreateBasic(device->root, "Mgmt/ProcessVersion",
                       veVariantStr(&v, pltProgramVersion()));
 
-    veItemAddQuantityAndProduce(device->root, "Dc/0/Voltage", &device->voltage,
-                                veVariantInvalidType(&v, VE_FLOAT),
-                                &unitVoltage2Dec);
-    veItemAddQuantityAndProduce(device->root, "Dc/0/Current", &device->current,
-                                veVariantInvalidType(&v, VE_FLOAT),
-                                &unitAmps1Dec);
-    veItemAddQuantityAndProduce(device->root, "Motor/RPM", &device->rpm,
-                                veVariantInvalidType(&v, VE_UN16),
-                                &unitRpm0Dec);
-    veItemAddBasicAndProduce(device->root, "Motor/Direction",
-                             &device->direction,
-                             veVariantInvalidType(&v, VE_UN8));
-    veItemAddQuantityAndProduce(
-        device->root, "Motor/Temperature", &device->temperature,
-        veVariantInvalidType(&v, VE_UN16), &unitCelsius0Dec);
-
+    device->voltage = veItemCreateQuantity(device->root, "Dc/0/Voltage",
+                                           veVariantInvalidType(&v, VE_FLOAT),
+                                           &unitVoltage2Dec);
+    device->current =
+        veItemCreateQuantity(device->root, "Dc/0/Current",
+                             veVariantInvalidType(&v, VE_FLOAT), &unitAmps1Dec);
+    device->rpm =
+        veItemCreateQuantity(device->root, "Motor/RPM",
+                             veVariantInvalidType(&v, VE_UN16), &unitRpm0Dec);
+    device->direction = veItemCreateBasic(device->root, "Motor/Direction",
+                                          veVariantInvalidType(&v, VE_UN8));
+    device->temperature = veItemCreateQuantity(
+        device->root, "Motor/Temperature", veVariantInvalidType(&v, VE_UN16),
+        &unitCelsius0Dec);
     veDbusItemInit(device->dbus, device->root);
 }
 

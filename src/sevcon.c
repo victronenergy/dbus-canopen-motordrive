@@ -48,7 +48,7 @@ veBool sevconFetchBatteryCurrent(un8 nodeId, float *current) {
     return veFalse;
 }
 
-veBool sevconFetchEngineRpm(un8 nodeId, un32 *rpm) {
+veBool sevconFetchEngineRpm(un8 nodeId, sn16 *rpm) {
     SdoMessage response;
     if (readSdo(nodeId, 0x606c, 0, &response) != 0) {
         return veTrue;
