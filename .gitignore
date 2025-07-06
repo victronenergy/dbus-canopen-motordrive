@@ -5,3 +5,5 @@ mk
 build
 Makefile
 velib_path.mk
+dist
+venus-data-tmp

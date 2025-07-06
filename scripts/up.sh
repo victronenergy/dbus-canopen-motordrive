@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Download venus toolchain if not present
 if [ ! -f "build/toolchain.sh" ]; then
     echo "toolchain not found, downloading..."

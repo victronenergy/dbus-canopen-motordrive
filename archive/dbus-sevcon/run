@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec ./dbus-sevcon -c socketcan:can0
