@@ -4,7 +4,7 @@ script="install dbus-sevcon service"
 
 echo "### ${script} starting"
 
-# @todo: create symlink to service directory
+ln -s /data/dbus-sevcon/ /opt/victronenergy/service/dbus-sevcon
 
 echo "### ${script} done"
 
