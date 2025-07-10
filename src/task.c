@@ -120,4 +120,4 @@ void taskTick(void) {
     }
 }
 
-char const *pltProgramVersion(void) { return "v0.1"; }
+char const *pltProgramVersion(void) { return "v0.2"; }
