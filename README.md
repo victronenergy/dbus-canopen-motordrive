@@ -1,6 +1,8 @@
 # dbus-sevcon
 
-Venus OS driver to interface with a Sevcon gen4 controller and report a motordrive.
+Venus OS driver for Sevcon Gen4 controller: enables communication and motordrive data reporting via D-Bus.
+
+![dbus-sevcon](doc/dbus-sevcon-header.png)
 
 ## How to connect the Sevcon controller to a Victron GX product
 
