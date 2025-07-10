@@ -41,4 +41,13 @@ Run:
 `rm /opt/victronenergy/service/dbus-sevcon`  
 `rm -rf /data/dbus-sevcon`
 
+## How does the driver work
 
+Upon being installed, the driver will start looking for the Sevcon controller every 10 seconds.  
+If one is detected, a new device (motordrive) will show up in Venus.  
+The motor data will be refreshed once per second.
+
+Turning off the engine/controller will remove the device.
+
+> [!WARNING]
+> The driver currently expects the controller to use CAN node ID 1. This will be configurable in the future.
