@@ -77,12 +77,11 @@ void createDbusTree(Device *device) {
     veItemCreateBasic(device->root, "Mgmt/ProcessVersion",
                       veVariantStr(&v, pltProgramVersion()));
 
-    device->voltage = veItemCreateQuantity(device->root, "Dc/0/Voltage",
-                                           veVariantInvalidType(&v, VE_FLOAT),
-                                           &unitVoltage2Dec);
-    device->current =
-        veItemCreateQuantity(device->root, "Dc/0/Current",
-                             veVariantInvalidType(&v, VE_FLOAT), &unitAmps1Dec);
+    device->voltage =
+        veItemCreateQuantity(device->root, "Dc/0/Voltage",
+                             veVariantFloat(&v, 0.0F), &unitVoltage2Dec);
+    device->current = veItemCreateQuantity(
+        device->root, "Dc/0/Current", veVariantFloat(&v, 0.0F), &unitAmps1Dec);
     device->rpm =
         veItemCreateQuantity(device->root, "Motor/RPM",
                              veVariantInvalidType(&v, VE_UN16), &unitRpm0Dec);
