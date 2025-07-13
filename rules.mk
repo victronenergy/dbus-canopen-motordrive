@@ -1,4 +1,6 @@
 T = dbus-sevcon$(EXT)
+VERSION = 0.2
+
 TARGETS += $T
 INSTALL_BIN += $T
 
@@ -12,6 +14,6 @@ INCLUDES += ./inc
 $T_DEPS += $(call subtree_tgts,$(d)/src)
 
 $T_LIBS += -lpthread -ldl $(shell pkg-config --libs dbus-1) -levent -lm
-CC_CONFIG_CFLAGS += -DDBUS $(shell pkg-config --cflags dbus-1)
+CC_CONFIG_CFLAGS += -DDBUS $(shell pkg-config --cflags dbus-1) -DVERSION=\"$(VERSION)\"
 
 LDFLAGS += -s

@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <device.h>
+#include <localsettings.h>
 #include <logger.h>
 #include <stdio.h>
 #include <velib/canhw/canhw_driver.h>
@@ -8,25 +9,28 @@
 #include <velib/utils/ve_item_utils.h>
 #include <velib/vecan/products.h>
 
-static VeVariantUnitFmt unitVoltage2Dec = {2, "V"};
-static VeVariantUnitFmt unitAmps1Dec = {1, "A"};
 static VeVariantUnitFmt unitRpm0Dec = {0, "RPM"};
 static VeVariantUnitFmt unitCelsius0Dec = {0, "C"};
 
+static struct VeSettingProperties booleanType = {
+    .type = VE_SN32,
+    .def.value.SN32 = 0,
+    .min.value.SN32 = 0,
+    .max.value.SN32 = 1,
+};
+
 void connectToDbus(Device *device) {
-    device->dbus = veDbusGetDefaultBus();
+    device->dbus = veDbusConnectString(veDbusGetDefaultConnectString());
     if (!device->dbus) {
         error("dbus connection failed");
         pltExit(1);
     }
-    veDbusSetListeningDbus(device->dbus);
 }
 
 void getVrmDeviceInstance(Device *device) {
     char identifier[23];
 
-    snprintf(identifier, sizeof(identifier), "dbus_sevcon_%d",
-             device->serialNumber);
+    snprintf(identifier, sizeof(identifier), "sevcon_%d", device->serialNumber);
     device->deviceInstance =
         veDbusGetVrmDeviceInstance(identifier, "motordrive", 99);
     if (device->deviceInstance < 0) {
@@ -37,18 +41,9 @@ void getVrmDeviceInstance(Device *device) {
 
 void registerDbusServiceName(Device *device) {
     char serviceName[256];
-    char canGwId[32];
-    char *c;
 
-    VeCanGateway *canGw = veCanGwActive();
-    veCanGwId(canGw, canGwId, sizeof(canGwId));
-    for (c = canGwId; *c != 0; c += 1) {
-        if (!isalnum(*c)) {
-            *c = '_';
-        }
-    }
     snprintf(serviceName, sizeof(serviceName),
-             "com.victronenergy.motordrive.%s", canGwId);
+             "com.victronenergy.motordrive.sevcon_%d", device->serialNumber);
     if (!veDbusChangeName(device->dbus, serviceName)) {
         error("could not register dbus service name '%s'", serviceName);
         pltExit(3);
@@ -57,6 +52,8 @@ void registerDbusServiceName(Device *device) {
 
 void createDbusTree(Device *device) {
     VeVariant v;
+    char serialNumberStr[11];
+    char settingsPath[128];
 
     device->root =
         veItemGetOrCreateUid(veValueTree(), "com.victonenergy.producer");
@@ -77,11 +74,17 @@ void createDbusTree(Device *device) {
     veItemCreateBasic(device->root, "Mgmt/ProcessVersion",
                       veVariantStr(&v, pltProgramVersion()));
 
+    snprintf(serialNumberStr, sizeof(serialNumberStr), "%d",
+             device->serialNumber);
+    veItemCreateBasic(device->root, "Serial",
+                      veVariantHeapStr(&v, serialNumberStr));
+
     device->voltage =
         veItemCreateQuantity(device->root, "Dc/0/Voltage",
-                             veVariantFloat(&v, 0.0F), &unitVoltage2Dec);
-    device->current = veItemCreateQuantity(
-        device->root, "Dc/0/Current", veVariantFloat(&v, 0.0F), &unitAmps1Dec);
+                             veVariantFloat(&v, 0.0F), &veUnitVolt2Dec);
+    device->current =
+        veItemCreateQuantity(device->root, "Dc/0/Current",
+                             veVariantFloat(&v, 0.0F), &veUnitAmps1Dec);
     device->rpm =
         veItemCreateQuantity(device->root, "Motor/RPM",
                              veVariantInvalidType(&v, VE_UN16), &unitRpm0Dec);
@@ -90,6 +93,13 @@ void createDbusTree(Device *device) {
     device->temperature = veItemCreateQuantity(
         device->root, "Motor/Temperature", veVariantInvalidType(&v, VE_UN16),
         &unitCelsius0Dec);
+
+    snprintf(settingsPath, sizeof(settingsPath), "Settings/Sevcon/%d",
+             device->serialNumber);
+    device->directionFlipped = veItemCreateSettingsProxy(
+        localSettings, settingsPath, device->root, "Motor/DirectionFlipped",
+        veVariantFmt, &veUnitNone, &booleanType);
+
     veDbusItemInit(device->dbus, device->root);
 }
 

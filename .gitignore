@@ -7,3 +7,4 @@ Makefile
 velib_path.mk
 dist
 venus-data-tmp
+.vscode

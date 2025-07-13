@@ -1,13 +1,8 @@
-#include <canopen.h>
-#include <ctype.h>
 #include <device.h>
+#include <localsettings.h>
 #include <sevcon.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <velib/canhw/canhw_driver.h>
-#include <velib/platform/plt.h>
-#include <velib/utils/ve_logger.h>
 #include <velib/utils/ve_timer.h>
 
 static un8 nodeId = 1;
@@ -15,7 +10,6 @@ static un16 task1sLastUpdate = 0;
 static un16 task10sLastUpdate = 0;
 static Device device;
 static veBool connected = veFalse;
-static veBool directionFlipped = veFalse;
 
 void taskEarlyInit(void) {
     VeCanDriver *drv = veCanSkRegister();
@@ -24,7 +18,11 @@ void taskEarlyInit(void) {
     }
 }
 
-void taskInit(void) {}
+void taskInit(void) {
+    localSettingsInit();
+
+    // @todo: get global settings for nodeId
+}
 
 void connectDevice() {
     un32 serialNumber;
@@ -48,6 +46,7 @@ void task1s() {
     sn16 engineRpm;
     un16 engineTemperature;
     un8 engineDirection;
+    veBool directionFlipped;
     VeVariant v;
 
     if (!connected) {
@@ -71,6 +70,9 @@ void task1s() {
         return;
     }
 
+    veItemLocalValue(device.directionFlipped, &v);
+    directionFlipped = veVariantIsValid(&v) && v.value.SN32 == 1;
+    // 0 - neutral, 1 - reverse, 2 - forward
     if (engineRpm > 0) {
         engineDirection = directionFlipped ? 1 : 2;
     } else if (engineRpm < 0) {
@@ -102,8 +104,7 @@ void taskUpdate(void) {
     VeRawCanMsg msg;
 
     while (veCanRead(&msg)) {
-        // needed to keep cpu usage down.
-        // @todo: ask for clarification
+        // Prevents high CPU usage if nothing else consumes the CAN messages
     }
 
     if (veTick1ms(&task1sLastUpdate, 1000)) {
@@ -120,4 +121,4 @@ void taskTick(void) {
     }
 }
 
-char const *pltProgramVersion(void) { return "v0.2"; }
+char const *pltProgramVersion(void) { return VERSION; }
