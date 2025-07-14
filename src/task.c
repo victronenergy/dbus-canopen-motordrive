@@ -46,7 +46,7 @@ void task1s() {
     sn16 engineRpm;
     un16 engineTemperature;
     un8 engineDirection;
-    veBool directionFlipped;
+    veBool directionInverted;
     VeVariant v;
 
     if (!connected) {
@@ -70,13 +70,13 @@ void task1s() {
         return;
     }
 
-    veItemLocalValue(device.directionFlipped, &v);
-    directionFlipped = veVariantIsValid(&v) && v.value.SN32 == 1;
+    veItemLocalValue(device.directionInverted, &v);
+    directionInverted = veVariantIsValid(&v) && v.value.SN32 == 1;
     // 0 - neutral, 1 - reverse, 2 - forward
     if (engineRpm > 0) {
-        engineDirection = directionFlipped ? 1 : 2;
+        engineDirection = directionInverted ? 1 : 2;
     } else if (engineRpm < 0) {
-        engineDirection = directionFlipped ? 2 : 1;
+        engineDirection = directionInverted ? 2 : 1;
     } else {
         engineDirection = 0;
     }

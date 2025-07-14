@@ -96,8 +96,8 @@ void createDbusTree(Device *device) {
 
     snprintf(settingsPath, sizeof(settingsPath), "Settings/Sevcon/%d",
              device->serialNumber);
-    device->directionFlipped = veItemCreateSettingsProxy(
-        localSettings, settingsPath, device->root, "Motor/DirectionFlipped",
+    device->directionInverted = veItemCreateSettingsProxy(
+        localSettings, settingsPath, device->root, "Motor/DirectionInverted",
         veVariantFmt, &veUnitNone, &booleanType);
 
     veDbusItemInit(device->dbus, device->root);

@@ -17,7 +17,7 @@ typedef struct {
     VeItem *current;
     VeItem *rpm;
     VeItem *direction;
-    VeItem *directionFlipped;
+    VeItem *directionInverted;
     VeItem *temperature;
 } Device;
 
