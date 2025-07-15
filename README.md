@@ -12,12 +12,33 @@ Connect the CAN output from the Sevcon controller to the Victron product's VE.Ca
 
 A modified RJ45 cable can be sufficient.
 
-| RJ45 pin # | Controller pin |
-|------------|----------------|
-| 7 (Brown/White) | 13 or 16 (CAN High) |
-| 8 (Brown) | 24 or 27 (CAN Low) |
+| Role| RJ45 pin # | Controller pin |
+|-----|------------|----------------|
+| CAN Ground | 3 (Green/White) | B- |
+| CAN High | 7 (Brown/White) | 13 or 16 |
+| CAN Low | 8 (Brown) | 24 or 27 |
+
+### CAN Ground
+
+Ensure that there is a common ground connection for all nodes on the CAN bus.  
+If there is a node on the bus which is galvanically isolated from the Gen4 controller then the CAN ground on this node must be connected to the Gen4 controller B-.
+
+### CAN Termination
+
+If your system has more than one CAN node, connect the nodes in a 'daisy chain' arrangement
+and terminate the connections of the two end nodes with a 120 ohms resistor.  
+If the end node is a Gen4, link pins 2 and 24 on the customer connector, a 120 ohms resistor is built into the controller.  
+If you have a single node system the termination resistor should be connected so that the bus operates correctly when configuration tools are used.
+
+On the VE.Can side, it can be terminated with a dedicated [VE.Can Terminator](https://www.victronenergy.com/accessories/ve-can-rj45-terminator).
 
 Sevcon gen4 manual: https://www.thunderstruck-ev.com/images/Gen4%20Product%20Manual%20V3%204.pdf
+
+### Sevcon Gen4 Model support
+
+Driver has been tested on Sevcon Gen4 AC size 4 controller.  
+It should work identically with size 2 and size 6 controllers.  
+Not tested on Gen4 DC controllers.
 
 ## How to install the driver
 
@@ -49,7 +70,24 @@ Upon being installed, the driver will start looking for the Sevcon controller ev
 If one is detected, a new device (motordrive) will show up in Venus.  
 The motor data will be refreshed once per second.
 
+The driver doesn't make use of TPDO/PDOs, instead every second it's requesting the data through SDOs.
+
 Turning off the engine/controller will remove the device.
 
 > [!WARNING]
 > The driver currently expects the controller to use CAN node ID 1. This will be configurable in the future.
+
+## Which SDOs are used by the driver
+
+| index | subindex | Description |
+|------------|----------------|---|
+| 0x1018 | 4 | Controller Serial Number |
+| 0x5000 | 1 | Access Level Indication |
+| 0x5000 | 3 | User ID |
+| 0x5000 | 2 | Password (16-bit) |
+| 0x5100 | 1 | Battery Voltage / 0.0625 |
+| 0x5100 | 2 | Battery Current / 0.0625 |
+| 0x606c | 0 | Engine RPM |
+| 0x4600 | 3 | Engine Temperature |
+
+User ID [0x0] and password [0x4bdf] will give Engineering access level to the controller.
