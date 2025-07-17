@@ -219,8 +219,8 @@ un8 readSegmentedSdo(un8 nodeId, un32 index, un8 subindex, un8 *buffer,
         un8 data_length =
             8 - ((response.control & SDO_SEGMENT_UNUSED_MASK) >> 1);
         un8 bytes_to_copy = *length + data_length > max_length
-                                    ? max_length - *length
-                                    : data_length;
+                                ? max_length - *length
+                                : data_length;
         memcpy(buffer, response.byte + 1, bytes_to_copy);
         buffer += bytes_to_copy;
         *length += bytes_to_copy;
