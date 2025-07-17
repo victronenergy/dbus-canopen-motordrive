@@ -81,13 +81,9 @@ Turning off the engine/controller will remove the device.
 
 | index | subindex | Description |
 |------------|----------------|---|
+| 0x1008 | 0 | Controller Name |
 | 0x1018 | 4 | Controller Serial Number |
-| 0x5000 | 1 | Access Level Indication |
-| 0x5000 | 3 | User ID |
-| 0x5000 | 2 | Password (16-bit) |
 | 0x5100 | 1 | Battery Voltage / 0.0625 |
 | 0x5100 | 2 | Battery Current / 0.0625 |
 | 0x606c | 0 | Engine RPM |
 | 0x4600 | 3 | Engine Temperature |
-
-User ID [0x0] and password [0x4bdf] will give Engineering access level to the controller.
