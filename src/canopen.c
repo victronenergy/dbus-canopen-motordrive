@@ -154,3 +154,93 @@ un8 writeSdo(un8 nodeId, un32 index, un8 subindex, un32 data) {
 
     return 0;
 }
+
+un8 readSegmentedSdo(un8 nodeId, un32 index, un8 subindex, un8 *buffer,
+                     un8 *length, un8 max_length) {
+    SdoMessage response;
+    SdoMessage abort_request;
+    SdoMessage request;
+
+    request.control = SDO_READ_REQUEST_CONTROL;
+    request.index = index;
+    request.subindex = subindex;
+    request.data = 0;
+
+    *length = 0;
+
+    info("SDO_READ_SEGMENTED nodeId=%d index=%X subindex%d", nodeId, index,
+         subindex);
+
+    if (sendSdoRequest(nodeId, &request, &response) != 0) {
+        error("SDO_READ_ERROR_TIMEOUT");
+        return SDO_READ_ERROR_TIMEOUT;
+    }
+
+    if ((response.control & SDO_COMMAND_MASK) != SDO_READ_RESPONSE_CONTROL) {
+        error("SDO_READ_ERROR");
+        return SDO_READ_ERROR;
+    }
+
+    if (response.control & SDO_EXPEDITED) {
+        un8 data_length =
+            4 - ((response.control & SDO_EXPEDITED_UNUSED_MASK) >> 2);
+        un8 bytes_to_copy = data_length > max_length ? max_length : data_length;
+        memcpy(buffer, &response.data, bytes_to_copy);
+        *length = bytes_to_copy;
+
+        return 0;
+    }
+
+    un8 toggle = 0;
+
+    while (1) {
+        request.control = (SDO_READ_SEGMENT_REQUEST | toggle);
+        request.index = 0;
+        request.subindex = 0;
+        request.data = 0;
+
+        if (sendSdoRequest(nodeId, &request, &response) != 0) {
+            error("SDO_READ_ERROR_TIMEOUT");
+            return SDO_READ_ERROR_TIMEOUT;
+        }
+
+        if ((response.control & (SDO_COMMAND_MASK | SDO_SEGMENT_TOGGLE)) !=
+            (SDO_READ_SEGMENT_RESPONSE | toggle)) {
+            abort_request.control = SDO_ABORT_CONTROL;
+            abort_request.data = SDO_ABORT_OUT_OF_MEMORY;
+            abort_request.index = request.index;
+            abort_request.subindex = request.subindex;
+
+            sendRawSdoRequest(nodeId, &abort_request);
+            error("SDO_READ_ERROR_SEGMENT_MISMATCH");
+            return SDO_READ_ERROR_SEGMENT_MISMATCH;
+        }
+
+        un8 data_length =
+            8 - ((response.control & SDO_SEGMENT_UNUSED_MASK) >> 1);
+        un8 bytes_to_copy = *length + data_length > max_length
+                                    ? max_length - *length
+                                    : data_length;
+        memcpy(buffer, response.byte + 1, bytes_to_copy);
+        buffer += bytes_to_copy;
+        *length += bytes_to_copy;
+
+        if (response.control & SDO_SEGMENT_END) {
+            return 0;
+        }
+
+        if (*length == max_length) {
+            abort_request.control = SDO_ABORT_CONTROL;
+            abort_request.data = SDO_ABORT_OUT_OF_MEMORY;
+            abort_request.index = request.index;
+            abort_request.subindex = request.subindex;
+
+            sendRawSdoRequest(nodeId, &abort_request);
+
+            error("SDO_READ_ERROR_SEGMENT_MAX_LENGTH");
+            return SDO_READ_ERROR_SEGMENT_MAX_LENGTH;
+        }
+
+        toggle = toggle ? 0 : SDO_SEGMENT_TOGGLE;
+    }
+}
