@@ -93,7 +93,7 @@ void task10s() {
         return;
     }
 
-    if (sevconLogin(nodeId)) {
+    if (!isSevcon(nodeId)) {
         return;
     }
 

@@ -1,32 +1,18 @@
 #include <canopen.h>
 #include <sevcon.h>
 
-veBool sevconLogin(un8 nodeId) {
-    SdoMessage response;
+veBool isSevcon(un8 nodeId) {
+    un8 buffer[255];
+    un8 length;
 
-    if (readSdo(nodeId, 0x5000, 1, &response) != 0) {
+    if (readSegmentedSdo(nodeId, 0x1008, 0, buffer, &length, 255) != 0) {
+        return veFalse;
+    }
+
+    if (length >= 4 && buffer[0] == 'G' && buffer[1] == 'e' &&
+        buffer[2] == 'n' && buffer[3] == '4') {
         return veTrue;
     }
-
-    if (response.data != 4) {
-        // set user id
-        if (writeSdo(nodeId, 0x5000, 3, 0) != 0) {
-            return veTrue;
-        }
-        // set password
-        if (writeSdo(nodeId, 0x5000, 2, 0x4bdf) != 0) {
-            return veTrue;
-        }
-
-        if (readSdo(nodeId, 0x5000, 1, &response) != 0) {
-            return veTrue;
-        }
-
-        if (response.data != 4) {
-            return veTrue;
-        }
-    }
-
     return veFalse;
 }
 

@@ -3,7 +3,7 @@
 
 #include <velib/base/types.h>
 
-veBool sevconLogin(un8 nodeId);
+veBool isSevcon(un8 nodeId);
 veBool sevconFetchBatteryVoltage(un8 nodeId, float *voltage);
 veBool sevconFetchBatteryCurrent(un8 nodeId, float *current);
 veBool sevconFetchEngineRpm(un8 nodeId, sn16 *rpm);
