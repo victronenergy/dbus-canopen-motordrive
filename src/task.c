@@ -1,3 +1,5 @@
+#include <canopen.h>
+#include <curtis.h>
 #include <device.h>
 #include <localsettings.h>
 #include <sevcon.h>
@@ -25,13 +27,25 @@ void taskInit(void) {
 }
 
 void connectDevice() {
-    un32 serialNumber;
+    un8 nodeName[255];
+    un8 length;
 
-    if (sevconFetchSerialNumber(nodeId, &serialNumber)) {
+    if (readSegmentedSdo(nodeId, 0x1008, 0, nodeName, &length, 255) != 0) {
         return;
     }
+    if (length >= 4 && nodeName[0] == 'G' && nodeName[1] == 'e' &&
+        nodeName[2] == 'n' && nodeName[3] == '4') {
+        device.driver = &sevconDriver;
+    } else if (length >= 4 && nodeName[0] == 'A' && nodeName[1] == 'C' &&
+               nodeName[2] == ' ' && nodeName[3] == 'F') {
+        device.driver = &curtisDriver;
+    } else {
+        return; // Unsupported controller type
+    }
 
-    createDevice(&device, serialNumber);
+    if (createDevice(&device, nodeId) != 0) {
+        return;
+    }
     connected = veTrue;
 }
 
@@ -41,59 +55,18 @@ void disconnectDevice() {
 }
 
 void task1s() {
-    float batteryVoltage;
-    float batteryCurrent;
-    sn16 engineRpm;
-    un16 engineTemperature;
-    un8 engineDirection;
-    veBool directionInverted;
-    VeVariant v;
-
     if (!connected) {
         return;
     }
 
-    if (sevconFetchBatteryVoltage(nodeId, &batteryVoltage)) {
+    if (device.driver->readRoutine(&device)) {
         disconnectDevice();
         return;
     }
-    if (sevconFetchBatteryCurrent(nodeId, &batteryCurrent)) {
-        disconnectDevice();
-        return;
-    }
-    if (sevconFetchEngineRpm(nodeId, &engineRpm)) {
-        disconnectDevice();
-        return;
-    }
-    if (sevconFetchEngineTemperature(nodeId, &engineTemperature)) {
-        disconnectDevice();
-        return;
-    }
-
-    veItemLocalValue(device.directionInverted, &v);
-    directionInverted = veVariantIsValid(&v) && v.value.SN32 == 1;
-    // 0 - neutral, 1 - reverse, 2 - forward
-    if (engineRpm > 0) {
-        engineDirection = directionInverted ? 1 : 2;
-    } else if (engineRpm < 0) {
-        engineDirection = directionInverted ? 2 : 1;
-    } else {
-        engineDirection = 0;
-    }
-
-    veItemOwnerSet(device.voltage, veVariantFloat(&v, batteryVoltage));
-    veItemOwnerSet(device.current, veVariantFloat(&v, batteryCurrent));
-    veItemOwnerSet(device.rpm, veVariantUn16(&v, abs(engineRpm)));
-    veItemOwnerSet(device.temperature, veVariantUn16(&v, engineTemperature));
-    veItemOwnerSet(device.direction, veVariantUn8(&v, engineDirection));
 }
 
 void task10s() {
     if (connected) {
-        return;
-    }
-
-    if (!isSevcon(nodeId)) {
         return;
     }
 

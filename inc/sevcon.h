@@ -1,13 +1,13 @@
 #ifndef __SEVCON_H__
 #define __SEVCON_H__
 
-#include <velib/base/types.h>
+#include <driver.h>
+#include <velib/types/ve_item_def.h>
 
-veBool isSevcon(un8 nodeId);
-veBool sevconFetchBatteryVoltage(un8 nodeId, float *voltage);
-veBool sevconFetchBatteryCurrent(un8 nodeId, float *current);
-veBool sevconFetchEngineRpm(un8 nodeId, sn16 *rpm);
-veBool sevconFetchEngineTemperature(un8 nodeId, un16 *temperature);
-veBool sevconFetchSerialNumber(un8 nodeId, un32 *serialNumber);
+typedef struct {
+    VeItem *directionInverted;
+} SevconDriverContext;
+
+extern Driver sevconDriver;
 
 #endif

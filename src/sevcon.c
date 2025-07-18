@@ -1,22 +1,40 @@
 #include <canopen.h>
+#include <localsettings.h>
+#include <logger.h>
 #include <sevcon.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <velib/platform/plt.h>
 
-veBool isSevcon(un8 nodeId) {
-    un8 buffer[255];
-    un8 length;
+static struct VeSettingProperties booleanType = {
+    .type = VE_SN32,
+    .def.value.SN32 = 0,
+    .min.value.SN32 = 0,
+    .max.value.SN32 = 1,
+};
 
-    if (readSegmentedSdo(nodeId, 0x1008, 0, buffer, &length, 255) != 0) {
-        return veFalse;
+static void onBeforeDbusInit(Device *device) {
+    char settingsPath[128];
+    SevconDriverContext *context;
+
+    context = malloc(sizeof(SevconDriverContext));
+    if (context == NULL) {
+        error("could not allocate SevconDriverContext");
+        pltExit(5);
     }
 
-    if (length >= 4 && buffer[0] == 'G' && buffer[1] == 'e' &&
-        buffer[2] == 'n' && buffer[3] == '4') {
-        return veTrue;
-    }
-    return veFalse;
+    snprintf(settingsPath, sizeof(settingsPath), "Settings/Devices/%s",
+             device->identifier);
+    context->directionInverted =
+        veItemCreateSettingsProxy(localSettings, settingsPath, device->root,
+                                  "Settings/Motor/DirectionInverted",
+                                  veVariantFmt, &veUnitNone, &booleanType);
+    device->driverContext = context;
 }
 
-veBool sevconFetchBatteryVoltage(un8 nodeId, float *voltage) {
+static void onDestroy(Device *device) { free(device->driverContext); }
+
+static veBool readBatteryVoltage(un8 nodeId, float *voltage) {
     SdoMessage response;
     if (readSdo(nodeId, 0x5100, 1, &response) != 0) {
         return veTrue;
@@ -25,7 +43,7 @@ veBool sevconFetchBatteryVoltage(un8 nodeId, float *voltage) {
     return veFalse;
 }
 
-veBool sevconFetchBatteryCurrent(un8 nodeId, float *current) {
+static veBool readBatteryCurrent(un8 nodeId, float *current) {
     SdoMessage response;
     if (readSdo(nodeId, 0x5100, 2, &response) != 0) {
         return veTrue;
@@ -34,7 +52,7 @@ veBool sevconFetchBatteryCurrent(un8 nodeId, float *current) {
     return veFalse;
 }
 
-veBool sevconFetchEngineRpm(un8 nodeId, sn16 *rpm) {
+static veBool readEngineRpm(un8 nodeId, sn16 *rpm) {
     SdoMessage response;
     if (readSdo(nodeId, 0x606c, 0, &response) != 0) {
         return veTrue;
@@ -43,7 +61,7 @@ veBool sevconFetchEngineRpm(un8 nodeId, sn16 *rpm) {
     return veFalse;
 }
 
-veBool sevconFetchEngineTemperature(un8 nodeId, un16 *temperature) {
+static veBool readEngineTemperature(un8 nodeId, un16 *temperature) {
     SdoMessage response;
     if (readSdo(nodeId, 0x4600, 3, &response) != 0) {
         return veTrue;
@@ -52,7 +70,7 @@ veBool sevconFetchEngineTemperature(un8 nodeId, un16 *temperature) {
     return veFalse;
 }
 
-veBool sevconFetchSerialNumber(un8 nodeId, un32 *serialNumber) {
+static veBool getSerialNumber(un8 nodeId, un32 *serialNumber) {
     SdoMessage response;
     if (readSdo(nodeId, 0x1018, 4, &response) != 0) {
         return veTrue;
@@ -60,3 +78,48 @@ veBool sevconFetchSerialNumber(un8 nodeId, un32 *serialNumber) {
     *serialNumber = response.data;
     return veFalse;
 }
+
+static veBool readRoutine(Device *device) {
+    float batteryVoltage;
+    float batteryCurrent;
+    sn16 engineRpm;
+    un16 engineTemperature;
+    un8 engineDirection;
+    veBool directionInverted;
+    VeVariant v;
+
+    if (readBatteryVoltage(device->nodeId, &batteryVoltage) ||
+        readBatteryCurrent(device->nodeId, &batteryCurrent) ||
+        readEngineRpm(device->nodeId, &engineRpm) ||
+        readEngineTemperature(device->nodeId, &engineTemperature)) {
+        return veTrue;
+    }
+
+    veItemLocalValue(
+        ((SevconDriverContext *)device->driverContext)->directionInverted, &v);
+    directionInverted = veVariantIsValid(&v) && v.value.SN32 == 1;
+    // 0 - neutral, 1 - reverse, 2 - forward
+    if (engineRpm > 0) {
+        engineDirection = directionInverted ? 1 : 2;
+    } else if (engineRpm < 0) {
+        engineDirection = directionInverted ? 2 : 1;
+    } else {
+        engineDirection = 0;
+    }
+
+    veItemOwnerSet(device->voltage, veVariantFloat(&v, batteryVoltage));
+    veItemOwnerSet(device->current, veVariantFloat(&v, batteryCurrent));
+    veItemOwnerSet(device->rpm, veVariantUn16(&v, abs(engineRpm)));
+    veItemOwnerSet(device->temperature, veVariantUn16(&v, engineTemperature));
+    veItemOwnerSet(device->direction, veVariantUn8(&v, engineDirection));
+
+    return veFalse;
+}
+
+Driver sevconDriver = {
+    .name = "sevcon",
+    .getSerialNumber = getSerialNumber,
+    .readRoutine = readRoutine,
+    .onBeforeDbusInit = onBeforeDbusInit,
+    .onDestroy = onDestroy,
+};
