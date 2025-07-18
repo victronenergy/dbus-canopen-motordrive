@@ -115,6 +115,7 @@ veBool createDevice(Device *device, un8 nodeId) {
         return veTrue;
     }
 
+    device->nodeId = nodeId;
     connectToDbus(device);
     createDeviceIdentifier(device);
     getVrmDeviceInstance(device);
