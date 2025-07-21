@@ -21,9 +21,11 @@ typedef struct _Device {
     VeItem *root;
     VeItem *voltage;
     VeItem *current;
-    VeItem *rpm;
-    VeItem *direction;
-    VeItem *temperature;
+    VeItem *motorRpm;
+    VeItem *motorDirection;
+    VeItem *motorTemperature;
+    VeItem *controllerTemperature;
+    VeItem *motorDirectionInverted;
 
     Driver *driver;
     void *driverContext;

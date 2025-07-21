@@ -10,6 +10,13 @@
 #include <velib/utils/ve_item_utils.h>
 #include <velib/vecan/products.h>
 
+static struct VeSettingProperties booleanType = {
+    .type = VE_SN32,
+    .def.value.SN32 = 0,
+    .min.value.SN32 = 0,
+    .max.value.SN32 = 1,
+};
+
 static VeVariantUnitFmt unitRpm0Dec = {0, "RPM"};
 static VeVariantUnitFmt unitCelsius0Dec = {0, "C"};
 
@@ -60,6 +67,7 @@ void registerDbusServiceName(Device *device) {
 void createDbusTree(Device *device) {
     VeVariant v;
     char serialNumberStr[11];
+    char settingsPath[128];
 
     device->root =
         veItemGetOrCreateUid(veValueTree(), "com.victonenergy.producer");
@@ -94,14 +102,24 @@ void createDbusTree(Device *device) {
     device->current =
         veItemCreateQuantity(device->root, "Dc/0/Current",
                              veVariantFloat(&v, 0.0F), &veUnitAmps1Dec);
-    device->rpm =
+    device->motorRpm =
         veItemCreateQuantity(device->root, "Motor/RPM",
                              veVariantInvalidType(&v, VE_UN16), &unitRpm0Dec);
-    device->direction = veItemCreateBasic(device->root, "Motor/Direction",
-                                          veVariantInvalidType(&v, VE_UN8));
-    device->temperature = veItemCreateQuantity(
+    device->motorDirection = veItemCreateBasic(
+        device->root, "Motor/Direction", veVariantInvalidType(&v, VE_UN8));
+    device->motorTemperature = veItemCreateQuantity(
         device->root, "Motor/Temperature", veVariantInvalidType(&v, VE_UN16),
         &unitCelsius0Dec);
+    device->controllerTemperature = veItemCreateQuantity(
+        device->root, "Controller/Temperature",
+        veVariantInvalidType(&v, VE_UN16), &unitCelsius0Dec);
+
+    snprintf(settingsPath, sizeof(settingsPath), "Settings/Devices/%s",
+             device->identifier);
+    device->motorDirectionInverted =
+        veItemCreateSettingsProxy(localSettings, settingsPath, device->root,
+                                  "Motor/DirectionInverted",
+                                  veVariantFmt, &veUnitNone, &booleanType);
 
     if (device->driver->onBeforeDbusInit) {
         device->driver->onBeforeDbusInit(device);
