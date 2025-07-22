@@ -1,10 +1,7 @@
 #include <canopen.h>
 #include <localsettings.h>
-#include <logger.h>
 #include <sevcon.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <velib/platform/plt.h>
 
 static void onBeforeDbusInit(Device *device) {}
 
