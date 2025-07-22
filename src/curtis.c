@@ -1,55 +1,14 @@
 #include <canopen.h>
+#include <curtis.h>
 #include <localsettings.h>
-#include <sevcon.h>
 #include <stdlib.h>
 
-static void onBeforeDbusInit(Device *device) {}
-
-static void onDestroy(Device *device) {}
-
-static veBool readBatteryVoltage(un8 nodeId, float *voltage) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x5100, 1, &response) != 0) {
-        return veTrue;
-    }
-    *voltage = response.data * 0.0625F;
-    return veFalse;
+static void onBeforeDbusInit(Device *device) {
+    // Add any dbus item specific to curtis here
 }
 
-static veBool readBatteryCurrent(un8 nodeId, float *current) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x5100, 2, &response) != 0) {
-        return veTrue;
-    }
-    *current = response.data * 0.0625F;
-    return veFalse;
-}
-
-static veBool readMotorRpm(un8 nodeId, sn16 *rpm) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x606c, 0, &response) != 0) {
-        return veTrue;
-    }
-    *rpm = response.data;
-    return veFalse;
-}
-
-static veBool readMotorTemperature(un8 nodeId, un16 *temperature) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x4600, 3, &response) != 0) {
-        return veTrue;
-    }
-    *temperature = response.data;
-    return veFalse;
-}
-
-static veBool readControllerTemperature(un8 nodeId, un16 *temperature) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x5100, 4, &response) != 0) {
-        return veTrue;
-    }
-    *temperature = response.data;
-    return veFalse;
+static void onDestroy(Device *device) {
+    // Cleanup any allocated resources specific to curtis here
 }
 
 static veBool getSerialNumber(un8 nodeId, un32 *serialNumber) {
@@ -61,14 +20,67 @@ static veBool getSerialNumber(un8 nodeId, un32 *serialNumber) {
     return veFalse;
 }
 
+static veBool readBatteryVoltage(un8 nodeId, float *voltage) {
+    SdoMessage response;
+    if (readSdo(nodeId, 0x34C1, 0, &response) != 0) {
+        return veTrue;
+    }
+    *voltage = response.data * 0.01F;
+
+    return veFalse;
+}
+
+static veBool readBatteryCurrent(un8 nodeId, float *current) {
+    SdoMessage response;
+    if (readSdo(nodeId, 0x338F, 0, &response) != 0) {
+        return veTrue;
+    }
+    *current = response.data * 0.1F;
+    return veFalse;
+}
+
+static veBool readMotorRpm(un8 nodeId, sn16 *rpm) {
+    SdoMessage response;
+    if (readSdo(nodeId, 0x352F, 0, &response) != 0) {
+        return veTrue;
+    }
+    *rpm = response.data;
+
+    SdoMessage revResponse;
+    if (readSdo(nodeId, 0x362F, 0, &revResponse) == 0) {
+        if (revResponse.data == 1) {
+            *rpm *= -1;
+        }
+    }
+    return veFalse;
+}
+
+static veBool readMotorTemperature(un8 nodeId, float *temperature) {
+    SdoMessage response;
+    if (readSdo(nodeId, 0x3536, 0, &response) != 0) {
+        return veTrue;
+    }
+    *temperature = response.data * 0.1F;
+    return veFalse;
+}
+
+static veBool readControllerTemperature(un8 nodeId, float *temperature) {
+    SdoMessage response;
+    if (readSdo(nodeId, 0x3000, 0, &response) != 0) {
+        return veTrue;
+    }
+    *temperature = response.data * 0.1F;
+    return veFalse;
+}
+
 static veBool readRoutine(Device *device) {
     float batteryVoltage;
     float batteryCurrent;
     sn16 motorRpm;
-    un16 motorTemperature;
+    float motorTemperature;
     un8 motorDirection;
     veBool motorDirectionInverted;
-    un16 controllerTemperature;
+    float controllerTemperature;
     VeVariant v;
 
     if (readBatteryVoltage(device->nodeId, &batteryVoltage) ||
@@ -94,16 +106,16 @@ static veBool readRoutine(Device *device) {
     veItemOwnerSet(device->current, veVariantFloat(&v, batteryCurrent));
     veItemOwnerSet(device->motorRpm, veVariantUn16(&v, abs(motorRpm)));
     veItemOwnerSet(device->motorTemperature,
-                   veVariantUn16(&v, motorTemperature));
-    veItemOwnerSet(device->motorDirection, veVariantUn8(&v, motorDirection));
+                   veVariantFloat(&v, motorTemperature));
     veItemOwnerSet(device->controllerTemperature,
-                   veVariantUn16(&v, controllerTemperature));
+                   veVariantFloat(&v, controllerTemperature));
+    veItemOwnerSet(device->motorDirection, veVariantUn8(&v, motorDirection));
 
     return veFalse;
 }
 
-Driver sevconDriver = {
-    .name = "sevcon",
+Driver curtisDriver = {
+    .name = "curtis",
     .getSerialNumber = getSerialNumber,
     .readRoutine = readRoutine,
     .onBeforeDbusInit = onBeforeDbusInit,

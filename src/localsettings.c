@@ -10,6 +10,10 @@ void localSettingsInit(void) {
     struct VeDbus *dbus;
 
     dbus = veDbusGetDefaultBus();
+    if (dbus == NULL) {
+        error("veDbusGetDefaultBus failed");
+        pltExit(1);
+    }
     veDbusSetListeningDbus(dbus);
 
     localSettings =

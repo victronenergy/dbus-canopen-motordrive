@@ -28,11 +28,10 @@
 
 #define MAX_SDO_SEND_TRIES 3
 
-#pragma pack(1)
 typedef union {
     un8 byte[8];
 
-    struct {
+    struct __attribute__((packed)) {
         un8 control;
         un16 index;
         un8 subindex;
