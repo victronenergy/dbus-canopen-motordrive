@@ -1,6 +1,6 @@
-# dbus-sevcon
+# dbus-canopen-motordrive
 
-Venus OS driver for Sevcon Gen4 controller: enables communication and motordrive data reporting via D-Bus.
+Venus OS driver for Sevcon Gen4 & Curtis F series controllers: enables communication and motordrive data reporting via D-Bus.
 
 ![dbus-sevcon](doc/dbus-sevcon-header.png)
 
@@ -40,6 +40,26 @@ Driver has been tested on Sevcon Gen4 AC size 4 controller.
 It should work identically with size 2 and size 6 controllers.  
 Not tested on Gen4 DC controllers.
 
+## How to connect the Curtis controller to a Victron GX product
+
+For models with 35 pin Ampseal connectors (e.g. F6-A/F4-A), connect the GX device using the following pins:
+* Either CAN1 with CAN1 Low on pin 35 and CAN1 High on pin 23, or
+* CAN2 using CAN2 Low on pin 29 and CAN2 High on pin 28
+
+Note that some 35 pin models have termination resistor pins, please consult the manual to identify those.  
+If the model has isolated CAN ports, the Isolated GND (pin34) should be connected to the ground used by the GX device otherwise both devices should share the same grounds
+
+For models with 23 pin Ampseal connectors (e.g. F2-A), connect the GX device using the following pins:
+* CAN Low on pin 20 and CAN High on pin 23
+* The F2-A does not have isolated CAN interfaces, the GX device should be on the same ground as the controller.
+* Some variants of the F2-A have internal termination resistors and some don't - please consult the manual
+
+The following Curtis webpage should indicate the capabilities of each model https://www.curtisinstruments.com/products/motor-controllers
+
+### Curtis F series support
+
+Driver has been tested on the Curtis F6-A however should work on any F series controllers.
+
 ## How to install the driver
 
 1. Download the latest `venus-data.zip` from the [releases page](https://github.com/citolen/dbus-sevcon/releases).
@@ -66,7 +86,7 @@ Run:
 
 ## How does the driver work
 
-Upon being installed, the driver will start looking for the Sevcon controller every 10 seconds.  
+Upon being installed, the driver will start looking for the Sevcon/Curtis controller every 10 seconds.  
 If one is detected, a new device (motordrive) will show up in Venus.  
 The motor data will be refreshed once per second.
 
@@ -77,44 +97,27 @@ Turning off the engine/controller will remove the device.
 > [!WARNING]
 > The driver currently expects the controller to use CAN node ID 1. This will be configurable in the future.
 
-## Which SDOs are used by the driver
+## Sevcon - Which SDOs are used by the driver
 
 | index | subindex | Description |
 |------------|----------------|---|
 | 0x1008 | 0 | Controller Name |
 | 0x1018 | 4 | Controller Serial Number |
-| 0x5100 | 1 | Battery Voltage / 0.0625 |
-| 0x5100 | 2 | Battery Current / 0.0625 |
-| 0x606c | 0 | Engine RPM |
-| 0x4600 | 3 | Engine Temperature |
+| 0x5100 | 1 | Battery Voltage, 1 = 0.0625V |
+| 0x5100 | 2 | Battery Current, 1 = 0.0625V |
+| 0x606c | 0 | Motor RPM |
+| 0x4600 | 3 | Motor Temperature |
+| 0x5100 | 4 | Controller Temperature |
 
-### Curtis F Series support
-
-The driver has been tested on the Curtis F6-A however should work on any F series controllers
-
-For models with 35 pin Ampseal connectors (e.g. F6-A/F4-A), connect the GX device using the following pins:
-* Either CAN1 with CAN1 Low on pin 35 and CAN1 High on pin 23, or
-* CAN2 using CAN2 Low on pin 29 and CAN2 High on pin 28
-
-Note that some 35 pin models have termination resistor pins, please consult the manual to identify those.  
-If the model has isolated CAN ports, the Isolated GND (pin34) should be connected to the ground used by the GX device otherwise both devices should share the same grounds
-
-For models with 23 pin Ampseal connectors (e.g. F2-A), connect the GX device using the following pins:
-* CAN Low on pin 20 and CAN High on pin 23
-* The F2-A does not have isolated CAN interfaces, the GX device should be on the same ground as the controller.
-* Some variants of the F2-A have internal termination resistors and some don't - please consult the manual
-
-The following Curtis webpage should indicate the capabilities of each model https://www.curtisinstruments.com/products/motor-controllers
-
-## Which SDOs are used by the driver
+## Curtis - Which SDOs are used by the driver
 
 | index | subindex | Description |
 |------------|----------------|---|
 | 0x1008 | 0 | Controller Name |
 | 0x1018 | 4 | Controller Serial Number |
-| 0x34C1 | 0 | Capacitor Volts / 100 |
-| 0x338F | 0 | Battery Current / 10 |
+| 0x34C1 | 0 | Capacitor Volts, 1 = 0.01V |
+| 0x338F | 0 | Battery Current, 1 = 0.1A |
 | 0x352F | 0 | Motor RPM |
-| 0x362F | 0 | Swap Motor Direction |
 | 0x3536 | 0 | Motor Temperature |
 | 0x3000 | 0 | Controller Temperature |
+| 0x362F | 0 | Swap Motor Direction |
