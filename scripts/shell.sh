@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker exec -it dbus-sevcon-build bash
+docker exec -it dbus-canopen-motordrive-build bash

@@ -1,3 +1,0 @@
-#!/bin/sh
-echo "*** Starting dbus-sevcon ***"
-exec softlimit -d 100000000 -s 1000000 -a 100000000 /data/dbus-sevcon/dbus-sevcon -c socketcan:can0

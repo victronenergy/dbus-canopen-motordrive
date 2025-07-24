@@ -1,4 +1,4 @@
-T = dbus-sevcon$(EXT)
+T = dbus-canopen-motordrive$(EXT)
 VERSION = 0.4
 
 TARGETS += $T

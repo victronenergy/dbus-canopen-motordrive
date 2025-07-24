@@ -2,7 +2,7 @@
 
 Venus OS driver for Sevcon Gen4 & Curtis F series controllers: enables communication and motordrive data reporting via D-Bus.
 
-![dbus-sevcon](doc/dbus-sevcon-header.png)
+![dbus-canopen-motordrive](doc/dbus-canopen-motordrive-header.png)
 
 ## How to connect the Sevcon controller to a Victron GX product
 
@@ -62,7 +62,7 @@ Driver has been tested on the Curtis F6-A however should work on any F series co
 
 ## How to install the driver
 
-1. Download the latest `venus-data.zip` from the [releases page](https://github.com/citolen/dbus-sevcon/releases).
+1. Download the latest `venus-data.zip` from the [releases page](https://github.com/citolen/dbus-canopen-motordrive/releases).
 2. Put `venus-data.zip` on an SD card or USB flash drive.
 3. Put the SD card or USB flash drive into the Victron GX product.
 4. Reboot.
@@ -73,7 +73,7 @@ Once those steps are completed, if the controller is turned on and correctly con
 
 ## Where is the driver installed
 
-The driver is stored in `/data/dbus-sevcon`.  
+The driver is stored in `/data/dbus-canopen-motordrive`.  
 A symlink is created to `/opt/victronenergy/service/` to ensure it's loaded as a service on boot.
 
 ### How to remove the driver
@@ -81,8 +81,8 @@ A symlink is created to `/opt/victronenergy/service/` to ensure it's loaded as a
 SSH into venus. (See [guide on how to](https://www.victronenergy.com/live/ccgx:root_access))
 
 Run:  
-`rm /opt/victronenergy/service/dbus-sevcon`  
-`rm -rf /data/dbus-sevcon`
+`rm /opt/victronenergy/service/dbus-canopen-motordrive`  
+`rm -rf /data/dbus-canopen-motordrive`
 
 ## How does the driver work
 

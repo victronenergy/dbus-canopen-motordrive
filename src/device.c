@@ -87,7 +87,7 @@ void createDbusTree(Device *device) {
     veItemCreateBasic(device->root, "Mgmt/Connection",
                       veVariantStr(&v, "VE.Can"));
     veItemCreateBasic(device->root, "Mgmt/ProcessName",
-                      veVariantStr(&v, "dbus-sevcon"));
+                      veVariantStr(&v, "dbus-canopen-motordrive"));
     veItemCreateBasic(device->root, "Mgmt/ProcessVersion",
                       veVariantStr(&v, pltProgramVersion()));
 

@@ -1,12 +1,12 @@
 services:
-  dbus-sevcon-build:
+  dbus-canopen-motordrive-build:
     build:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./:/workspace/dbus-sevcon
+      - ./:/workspace/dbus-canopen-motordrive
       - "${VELIB_PATH}:/workspace/velib"
-    container_name: dbus-sevcon-build
+    container_name: dbus-canopen-motordrive-build
     platform: linux/amd64
     tty: true
     stdin_open: true
