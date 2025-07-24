@@ -2,6 +2,7 @@
 #include <localsettings.h>
 #include <sevcon.h>
 #include <stdlib.h>
+#include <velib/vecan/products.h>
 
 static void onBeforeDbusInit(Device *device) {}
 
@@ -43,6 +44,15 @@ static veBool readMotorTemperature(un8 nodeId, un16 *temperature) {
     return veFalse;
 }
 
+static veBool readMotorTorque(un8 nodeId, sn16 *torque) {
+    SdoMessage response;
+    if (readSdo(nodeId, 0x4602, 0xC, &response) != 0) {
+        return veTrue;
+    }
+    *torque = response.data;
+    return veFalse;
+}
+
 static veBool readControllerTemperature(un8 nodeId, un16 *temperature) {
     SdoMessage response;
     if (readSdo(nodeId, 0x5100, 4, &response) != 0) {
@@ -66,6 +76,7 @@ static veBool readRoutine(Device *device) {
     float batteryCurrent;
     sn16 motorRpm;
     un16 motorTemperature;
+    sn16 motorTorque;
     un8 motorDirection;
     veBool motorDirectionInverted;
     un16 controllerTemperature;
@@ -75,6 +86,7 @@ static veBool readRoutine(Device *device) {
         readBatteryCurrent(device->nodeId, &batteryCurrent) ||
         readMotorRpm(device->nodeId, &motorRpm) ||
         readMotorTemperature(device->nodeId, &motorTemperature) ||
+        readMotorTorque(device->nodeId, &motorTorque) ||
         readControllerTemperature(device->nodeId, &controllerTemperature)) {
         return veTrue;
     }
@@ -92,9 +104,12 @@ static veBool readRoutine(Device *device) {
 
     veItemOwnerSet(device->voltage, veVariantFloat(&v, batteryVoltage));
     veItemOwnerSet(device->current, veVariantFloat(&v, batteryCurrent));
+    veItemOwnerSet(device->power,
+                   veVariantSn32(&v, (sn32)batteryVoltage * batteryCurrent));
     veItemOwnerSet(device->motorRpm, veVariantUn16(&v, abs(motorRpm)));
     veItemOwnerSet(device->motorTemperature,
                    veVariantUn16(&v, motorTemperature));
+    veItemOwnerSet(device->motorTorque, veVariantUn16(&v, abs(motorTorque)));
     veItemOwnerSet(device->motorDirection, veVariantUn8(&v, motorDirection));
     veItemOwnerSet(device->controllerTemperature,
                    veVariantUn16(&v, controllerTemperature));
@@ -104,6 +119,7 @@ static veBool readRoutine(Device *device) {
 
 Driver sevconDriver = {
     .name = "sevcon",
+    .productId = VE_PROD_ID_SEVCON_MOTORDRIVE,
     .getSerialNumber = getSerialNumber,
     .readRoutine = readRoutine,
     .onBeforeDbusInit = onBeforeDbusInit,

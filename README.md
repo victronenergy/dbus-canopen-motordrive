@@ -107,6 +107,7 @@ Turning off the engine/controller will remove the device.
 | 0x5100 | 2 | Battery Current, 1 = 0.0625V |
 | 0x606c | 0 | Motor RPM |
 | 0x4600 | 3 | Motor Temperature |
+| 0x4602 | 0xC | Motor Torque |
 | 0x5100 | 4 | Controller Temperature |
 
 ## Curtis - Which SDOs are used by the driver

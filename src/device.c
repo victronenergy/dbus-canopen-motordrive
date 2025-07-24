@@ -19,6 +19,7 @@ static struct VeSettingProperties booleanType = {
 
 static VeVariantUnitFmt unitRpm0Dec = {0, "RPM"};
 static VeVariantUnitFmt unitCelsius0Dec = {0, "C"};
+static VeVariantUnitFmt unitNewtonM0Dec = {0, "Nm"};
 
 void connectToDbus(Device *device) {
     device->dbus = veDbusConnectString(veDbusGetDefaultConnectString());
@@ -74,14 +75,11 @@ void createDbusTree(Device *device) {
 
     veItemCreateBasic(device->root, "DeviceInstance",
                       veVariantUn16(&v, device->deviceInstance));
-    veItemCreateBasic(
-        device->root, "ProductId",
-        veVariantUn16(&v,
-                      VE_PROD_ID_CITOLEN_SEVCON)); // @todo: do we want a
-                                                   // generic product ID here?
+    veItemCreateBasic(device->root, "ProductId",
+                      veVariantUn16(&v, device->driver->productId));
     veItemCreateBasic(
         device->root, "ProductName",
-        veVariantStr(&v, veProductGetName(VE_PROD_ID_CITOLEN_SEVCON)));
+        veVariantStr(&v, veProductGetName(device->driver->productId)));
 
     veItemCreateBasic(device->root, "Connected", veVariantUn32(&v, 1));
     veItemCreateBasic(device->root, "Mgmt/Connection",
@@ -102,6 +100,8 @@ void createDbusTree(Device *device) {
     device->current =
         veItemCreateQuantity(device->root, "Dc/0/Current",
                              veVariantFloat(&v, 0.0F), &veUnitAmps1Dec);
+    device->power = veItemCreateQuantity(device->root, "Dc/0/Power",
+                                         veVariantSn32(&v, 0), &veUnitWatt);
     device->motorRpm =
         veItemCreateQuantity(device->root, "Motor/RPM",
                              veVariantInvalidType(&v, VE_UN16), &unitRpm0Dec);
@@ -110,6 +110,9 @@ void createDbusTree(Device *device) {
     device->motorTemperature = veItemCreateQuantity(
         device->root, "Motor/Temperature", veVariantInvalidType(&v, VE_UN16),
         &unitCelsius0Dec);
+    device->motorTorque = veItemCreateQuantity(
+        device->root, "Motor/Torque", veVariantInvalidType(&v, VE_UN16),
+        &unitNewtonM0Dec);
     device->controllerTemperature = veItemCreateQuantity(
         device->root, "Controller/Temperature",
         veVariantInvalidType(&v, VE_UN16), &unitCelsius0Dec);

@@ -2,6 +2,7 @@
 #include <curtis.h>
 #include <localsettings.h>
 #include <stdlib.h>
+#include <velib/vecan/products.h>
 
 static void onBeforeDbusInit(Device *device) {
     // Add any dbus item specific to curtis here
@@ -116,6 +117,7 @@ static veBool readRoutine(Device *device) {
 
 Driver curtisDriver = {
     .name = "curtis",
+    .productId = VE_PROD_ID_CURTIS_MOTORDRIVE,
     .getSerialNumber = getSerialNumber,
     .readRoutine = readRoutine,
     .onBeforeDbusInit = onBeforeDbusInit,
