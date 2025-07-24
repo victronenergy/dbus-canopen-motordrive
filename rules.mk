@@ -4,9 +4,9 @@ VERSION = 0.4
 TARGETS += $T
 INSTALL_BIN += $T
 
-SUBDIRS += ../velib
-INCLUDES += ../velib/inc
-$T_DEPS += $(call subtree_tgts,$(d)/../velib)
+SUBDIRS += velib
+INCLUDES += velib/inc
+$T_DEPS += $(call subtree_tgts,$(d)/velib)
 
 
 SUBDIRS += src
