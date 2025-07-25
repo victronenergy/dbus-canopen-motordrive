@@ -119,9 +119,10 @@ void createDbusTree(Device *device) {
 
     snprintf(settingsPath, sizeof(settingsPath), "Settings/Devices/%s",
              device->identifier);
-    device->motorDirectionInverted = veItemCreateSettingsProxy(
+    device->motorDirectionInverted = veItemCreateSettingsProxyId(
         localSettings, settingsPath, device->root, "Motor/DirectionInverted",
-        veVariantFmt, &veUnitNone, &booleanType);
+        veVariantFmt, &veUnitNone, &booleanType,
+        "Settings/Motor/DirectionInverted");
 
     if (device->driver->onBeforeDbusInit) {
         device->driver->onBeforeDbusInit(device);
