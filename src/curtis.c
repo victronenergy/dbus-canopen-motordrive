@@ -2,6 +2,7 @@
 #include <curtis.h>
 #include <localsettings.h>
 #include <stdlib.h>
+#include <string.h>
 #include <velib/vecan/products.h>
 
 static void onBeforeDbusInit(Device *device) {
@@ -56,6 +57,15 @@ static veBool readMotorRpm(un8 nodeId, sn16 *rpm) {
     return veFalse;
 }
 
+static veBool readMotorTorque(un8 nodeId, float *torque) {
+    SdoMessage response;
+    if (readSdo(nodeId, 0x3538, 0, &response) != 0) {
+        return veTrue;
+    }
+    memcpy(torque, &response.data, sizeof(*torque));  // Torque is sent as 32bit float
+    return veFalse;
+}
+
 static veBool readMotorTemperature(un8 nodeId, float *temperature) {
     SdoMessage response;
     if (readSdo(nodeId, 0x3536, 0, &response) != 0) {
@@ -79,6 +89,7 @@ static veBool readRoutine(Device *device) {
     float batteryCurrent;
     sn16 motorRpm;
     float motorTemperature;
+    float motorTorque;
     un8 motorDirection;
     veBool motorDirectionInverted;
     float controllerTemperature;
@@ -87,6 +98,7 @@ static veBool readRoutine(Device *device) {
     if (readBatteryVoltage(device->nodeId, &batteryVoltage) ||
         readBatteryCurrent(device->nodeId, &batteryCurrent) ||
         readMotorRpm(device->nodeId, &motorRpm) ||
+        readMotorTorque(device->nodeId, &motorTorque) ||
         readMotorTemperature(device->nodeId, &motorTemperature) ||
         readControllerTemperature(device->nodeId, &controllerTemperature)) {
         return veTrue;
@@ -105,9 +117,13 @@ static veBool readRoutine(Device *device) {
 
     veItemOwnerSet(device->voltage, veVariantFloat(&v, batteryVoltage));
     veItemOwnerSet(device->current, veVariantFloat(&v, batteryCurrent));
+    veItemOwnerSet(device->power,
+                   veVariantSn32(&v, (sn32)batteryVoltage * batteryCurrent));
     veItemOwnerSet(device->motorRpm, veVariantUn16(&v, abs(motorRpm)));
     veItemOwnerSet(device->motorTemperature,
                    veVariantFloat(&v, motorTemperature));
+    // Motor Torque beyond the first decimal place is meaningless
+    veItemOwnerSet(device->motorTorque, veVariantFloat(&v, abs(roundf(motorTorque * 10)) / 10));
     veItemOwnerSet(device->controllerTemperature,
                    veVariantFloat(&v, controllerTemperature));
     veItemOwnerSet(device->motorDirection, veVariantUn8(&v, motorDirection));
