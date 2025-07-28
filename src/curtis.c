@@ -62,7 +62,8 @@ static veBool readMotorTorque(un8 nodeId, float *torque) {
     if (readSdo(nodeId, 0x3538, 0, &response) != 0) {
         return veTrue;
     }
-    memcpy(torque, &response.data, sizeof(*torque));  // Torque is sent as 32bit float
+    memcpy(torque, &response.data,
+           sizeof(*torque)); // Torque is sent as 32bit float
     return veFalse;
 }
 
