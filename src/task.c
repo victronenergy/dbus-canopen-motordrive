@@ -2,16 +2,19 @@
 #include <curtis.h>
 #include <device.h>
 #include <localsettings.h>
+#include <logger.h>
+#include <node.h>
+#include <servicemanager.h>
 #include <sevcon.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <velib/canhw/canhw_driver.h>
 #include <velib/utils/ve_timer.h>
 
-static un8 nodeId = 1;
 static un16 task1sLastUpdate = 0;
 static un16 task10sLastUpdate = 0;
-static Device device;
-static veBool connected = veFalse;
+static Node nodes[127];
 
 void taskEarlyInit(void) {
     VeCanDriver *drv = veCanSkRegister();
@@ -21,56 +24,81 @@ void taskEarlyInit(void) {
 }
 
 void taskInit(void) {
-    localSettingsInit();
+    memset(nodes, 0, sizeof(nodes));
 
-    // @todo: get global settings for nodeId
+    localSettingsInit();
+    serviceManagerInit();
 }
 
-void connectDevice() {
-    un8 nodeName[255];
+void connectNode(un8 nodeId) {
+    un8 name[255];
     un8 length;
+    Node *node;
+    Driver *driver;
 
-    if (readSegmentedSdo(nodeId, 0x1008, 0, nodeName, &length, 255) != 0) {
+    if (readSegmentedSdo(nodeId, 0x1008, 0, name, &length, 255) != 0) {
         return;
     }
-    if (length >= 4 && nodeName[0] == 'G' && nodeName[1] == 'e' &&
-        nodeName[2] == 'n' && nodeName[3] == '4') {
-        device.driver = &sevconDriver;
-    } else if (length >= 4 && nodeName[0] == 'A' && nodeName[1] == 'C' &&
-               nodeName[2] == ' ' && nodeName[3] == 'F') {
-        device.driver = &curtisDriver;
-    } else {
+    driver = getDriverForNodeName(name, length);
+    if (driver == NULL) {
         return; // Unsupported controller type
     }
 
-    if (createDevice(&device, nodeId) != 0) {
+    node = &nodes[nodeId - 1];
+    node->device = malloc(sizeof(*node->device));
+    if (!node->device) {
+        error("malloc failed for node device");
+        pltExit(5);
+    }
+    node->device->driver = driver;
+
+    if (createDevice(node->device, nodeId)) {
+        free(node->device);
+        node->device = NULL;
         return;
     }
-    connected = veTrue;
+
+    node->connected = veTrue;
 }
 
-void disconnectDevice() {
-    destroyDevice(&device);
-    connected = veFalse;
+void disconnectNode(Node *node) {
+    destroyDevice(node->device);
+    free(node->device);
+    node->device = NULL;
+    node->connected = veFalse;
 }
 
 void task1s() {
-    if (!connected) {
-        return;
+    un8 nodeId;
+    Node *node;
+
+    if (serviceManager.scan->variant.value.UN8 == 1) {
+        scanBus();
     }
 
-    if (device.driver->readRoutine(&device)) {
-        disconnectDevice();
-        return;
+    for (nodeId = 1, node = nodes; nodeId <= 127; nodeId += 1, node += 1) {
+        if (node->connected) {
+            if (node->device->driver->readRoutine(node->device)) {
+                disconnectNode(node);
+            }
+        }
     }
 }
 
 void task10s() {
-    if (connected) {
-        return;
-    }
+    size_t i;
+    un8 *ptr;
+    un8 nodeId;
+    Node *node;
 
-    connectDevice();
+    for (ptr = serviceManager.discoveredNodeIds.data, i = 0;
+         i < serviceManager.discoveredNodeIds.count; i += 1, ptr += 1) {
+        nodeId = *ptr;
+        node = &nodes[nodeId - 1];
+        if (!node->connected) {
+            connectNode(nodeId);
+        }
+    }
 }
 
 void taskUpdate(void) {
@@ -89,9 +117,15 @@ void taskUpdate(void) {
 }
 
 void taskTick(void) {
-    if (device.root) {
-        veItemTick(device.root);
+    un8 nodeId;
+    Node *node;
+
+    for (nodeId = 1, node = nodes; nodeId <= 127; nodeId += 1, node += 1) {
+        if (node->connected) {
+            veItemTick(node->device->root);
+        }
     }
+    veItemTick(serviceManager.root);
 }
 
 char const *pltProgramVersion(void) { return VERSION; }
