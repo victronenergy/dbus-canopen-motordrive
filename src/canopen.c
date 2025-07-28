@@ -32,10 +32,10 @@ void sendRawSdoRequest(un8 nodeId, const SdoMessage *request) {
             info("CAN_SEND_SUCCESS");
             return;
         } else {
-            error("CAN_SEND_ERROR");
+            warning("CAN_SEND_ERROR");
         }
     }
-    error("CAN_SEND_TOO_MANY_FAILURES");
+    warning("CAN_SEND_TOO_MANY_FAILURES");
 }
 
 veBool waitForSdoResponse(un8 nodeId, SdoMessage *response) {
@@ -80,7 +80,7 @@ un8 sendSdoRequest(un8 nodeId, const SdoMessage *request,
         abort_request.data = SDO_ABORT_TIMEOUT;
         abort_request.index = request->index;
         abort_request.subindex = request->subindex;
-        error("SDO_SEND_ABORT_TIMEOUT");
+        warning("SDO_SEND_ABORT_TIMEOUT");
         logSdoMessage(&abort_request);
         sendRawSdoRequest(nodeId, &abort_request);
 
@@ -90,7 +90,7 @@ un8 sendSdoRequest(un8 nodeId, const SdoMessage *request,
         tries += 1;
     }
 
-    error("SDO_SEND_TIMEOUT");
+    warning("SDO_SEND_TIMEOUT");
 
     return SDO_ERROR_TIMEOUT;
 }
@@ -105,17 +105,17 @@ un8 readSdo(un8 nodeId, un32 index, un8 subindex, SdoMessage *response) {
     info("SDO_READ nodeId=%d index=%X subindex%d", nodeId, index, subindex);
 
     if (sendSdoRequest(nodeId, &request, response) != 0) {
-        error("SDO_READ_ERROR_TIMEOUT");
+        warning("SDO_READ_ERROR_TIMEOUT");
         return SDO_READ_ERROR_TIMEOUT;
     }
 
     if ((response->control & SDO_COMMAND_MASK) != SDO_READ_RESPONSE_CONTROL) {
-        error("SDO_READ_ERROR");
+        warning("SDO_READ_ERROR");
         return SDO_READ_ERROR;
     }
 
     if (response->control & SDO_EXPEDITED) {
-        info("SDO_READ_SUCCESS");
+        warning("SDO_READ_SUCCESS");
 
         return 0;
     }
@@ -125,7 +125,7 @@ un8 readSdo(un8 nodeId, un32 index, un8 subindex, SdoMessage *response) {
     abort_request.data = SDO_ABORT_OUT_OF_MEMORY;
     abort_request.index = request.index;
     abort_request.subindex = request.subindex;
-    error("SDO_READ_ERROR_SEGMENT_TRANSFER");
+    warning("SDO_READ_ERROR_SEGMENT_TRANSFER");
     sendRawSdoRequest(nodeId, &abort_request);
 
     return SDO_READ_ERROR_SEGMENT_TRANSFER;
@@ -143,12 +143,12 @@ un8 writeSdo(un8 nodeId, un32 index, un8 subindex, un32 data) {
          subindex);
 
     if (sendSdoRequest(nodeId, &request, &response) != 0) {
-        error("SDO_WRITE_ERROR_TIMEOUT");
+        warning("SDO_WRITE_ERROR_TIMEOUT");
         return SDO_READ_ERROR_TIMEOUT;
     }
 
     if ((response.control & SDO_COMMAND_MASK) != SDO_WRITE_RESPONSE_CONTROL) {
-        error("SDO_WRITE_ERROR");
+        warning("SDO_WRITE_ERROR");
         return SDO_WRITE_ERROR;
     }
 
@@ -172,12 +172,12 @@ un8 readSegmentedSdo(un8 nodeId, un32 index, un8 subindex, un8 *buffer,
          subindex);
 
     if (sendSdoRequest(nodeId, &request, &response) != 0) {
-        error("SDO_READ_ERROR_TIMEOUT");
+        warning("SDO_READ_ERROR_TIMEOUT");
         return SDO_READ_ERROR_TIMEOUT;
     }
 
     if ((response.control & SDO_COMMAND_MASK) != SDO_READ_RESPONSE_CONTROL) {
-        error("SDO_READ_ERROR");
+        warning("SDO_READ_ERROR");
         return SDO_READ_ERROR;
     }
 
@@ -200,7 +200,7 @@ un8 readSegmentedSdo(un8 nodeId, un32 index, un8 subindex, un8 *buffer,
         request.data = 0;
 
         if (sendSdoRequest(nodeId, &request, &response) != 0) {
-            error("SDO_READ_ERROR_TIMEOUT");
+            warning("SDO_READ_ERROR_TIMEOUT");
             return SDO_READ_ERROR_TIMEOUT;
         }
 
@@ -212,7 +212,7 @@ un8 readSegmentedSdo(un8 nodeId, un32 index, un8 subindex, un8 *buffer,
             abort_request.subindex = request.subindex;
 
             sendRawSdoRequest(nodeId, &abort_request);
-            error("SDO_READ_ERROR_SEGMENT_MISMATCH");
+            warning("SDO_READ_ERROR_SEGMENT_MISMATCH");
             return SDO_READ_ERROR_SEGMENT_MISMATCH;
         }
 
@@ -237,7 +237,7 @@ un8 readSegmentedSdo(un8 nodeId, un32 index, un8 subindex, un8 *buffer,
 
             sendRawSdoRequest(nodeId, &abort_request);
 
-            error("SDO_READ_ERROR_SEGMENT_MAX_LENGTH");
+            warning("SDO_READ_ERROR_SEGMENT_MAX_LENGTH");
             return SDO_READ_ERROR_SEGMENT_MAX_LENGTH;
         }
 
