@@ -124,19 +124,13 @@ void createDbusTree(Device *device) {
         veVariantFmt, &veUnitNone, &booleanType,
         "Settings/Motor/DirectionInverted");
 
-    if (device->driver->onBeforeDbusInit) {
-        device->driver->onBeforeDbusInit(device);
-    }
-
     veDbusItemInit(device->dbus, device->root);
 }
 
-veBool createDevice(Device *device, un8 nodeId) {
-    if (device->driver->getSerialNumber(nodeId, &device->serialNumber)) {
-        return veTrue;
-    }
-
+veBool createDevice(Device *device, un8 nodeId, un32 serialNumber) {
     device->nodeId = nodeId;
+    device->serialNumber = serialNumber;
+
     connectToDbus(device);
     createDeviceIdentifier(device);
     getVrmDeviceInstance(device);

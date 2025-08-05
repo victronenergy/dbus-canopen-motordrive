@@ -1,127 +1,113 @@
 #include <canopen.h>
 #include <localsettings.h>
+#include <node.h>
 #include <sevcon.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <velib/vecan/products.h>
 
-static void onBeforeDbusInit(Device *device) {}
+static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
+    VeVariant v;
+    Device *device;
+    float voltage;
 
-static void onDestroy(Device *device) {}
+    device = (Device *)request->context;
+    voltage = request->response.data * 0.0625F;
 
-static veBool readBatteryVoltage(un8 nodeId, float *voltage) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x5100, 1, &response) != 0) {
-        return veTrue;
-    }
-    *voltage = response.data * 0.0625F;
-    return veFalse;
+    veItemOwnerSet(device->voltage, veVariantFloat(&v, voltage));
+    veItemLocalValue(device->current, &v);
+    veItemOwnerSet(device->power,
+                   veVariantSn32(&v, (sn32)voltage * v.value.Float));
 }
 
-static veBool readBatteryCurrent(un8 nodeId, float *current) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x5100, 2, &response) != 0) {
-        return veTrue;
-    }
-    *current = response.data * 0.0625F;
-    return veFalse;
+static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
+    VeVariant v;
+    Device *device;
+    float current;
+
+    device = (Device *)request->context;
+    current = ((sn32)request->response.data) * 0.0625F;
+
+    veItemOwnerSet(device->current, veVariantFloat(&v, current));
+
+    veItemLocalValue(device->voltage, &v);
+    veItemOwnerSet(device->power,
+                   veVariantSn32(&v, (sn32)v.value.Float * current));
 }
 
-static veBool readMotorRpm(un8 nodeId, sn16 *rpm) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x606c, 0, &response) != 0) {
-        return veTrue;
-    }
-    *rpm = response.data;
-    return veFalse;
-}
-
-static veBool readMotorTemperature(un8 nodeId, un16 *temperature) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x4600, 3, &response) != 0) {
-        return veTrue;
-    }
-    *temperature = response.data;
-    return veFalse;
-}
-
-static veBool readMotorTorque(un8 nodeId, sn16 *torque) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x4602, 0xC, &response) != 0) {
-        return veTrue;
-    }
-    *torque = response.data;
-    return veFalse;
-}
-
-static veBool readControllerTemperature(un8 nodeId, un16 *temperature) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x5100, 4, &response) != 0) {
-        return veTrue;
-    }
-    *temperature = response.data;
-    return veFalse;
-}
-
-static veBool getSerialNumber(un8 nodeId, un32 *serialNumber) {
-    SdoMessage response;
-    if (readSdo(nodeId, 0x1018, 4, &response) != 0) {
-        return veTrue;
-    }
-    *serialNumber = response.data;
-    return veFalse;
-}
-
-static veBool readRoutine(Device *device) {
-    float batteryVoltage;
-    float batteryCurrent;
-    sn16 motorRpm;
-    un16 motorTemperature;
-    sn16 motorTorque;
+static void onMotorRpmResponse(CanOpenPendingSdoRequest *request) {
+    VeVariant v;
+    Device *device;
+    sn16 rpm;
     un8 motorDirection;
     veBool motorDirectionInverted;
-    un16 controllerTemperature;
-    VeVariant v;
 
-    if (readBatteryVoltage(device->nodeId, &batteryVoltage) ||
-        readBatteryCurrent(device->nodeId, &batteryCurrent) ||
-        readMotorRpm(device->nodeId, &motorRpm) ||
-        readMotorTemperature(device->nodeId, &motorTemperature) ||
-        readMotorTorque(device->nodeId, &motorTorque) ||
-        readControllerTemperature(device->nodeId, &controllerTemperature)) {
-        return veTrue;
-    }
+    device = (Device *)request->context;
+    rpm = request->response.data;
+
+    veItemOwnerSet(device->motorRpm, veVariantUn16(&v, abs(rpm)));
 
     veItemLocalValue(device->motorDirectionInverted, &v);
     motorDirectionInverted = veVariantIsValid(&v) && v.value.SN32 == 1;
     // 0 - neutral, 1 - reverse, 2 - forward
-    if (motorRpm > 0) {
+    if (rpm > 0) {
         motorDirection = motorDirectionInverted ? 1 : 2;
-    } else if (motorRpm < 0) {
+    } else if (rpm < 0) {
         motorDirection = motorDirectionInverted ? 2 : 1;
     } else {
         motorDirection = 0;
     }
-
-    veItemOwnerSet(device->voltage, veVariantFloat(&v, batteryVoltage));
-    veItemOwnerSet(device->current, veVariantFloat(&v, batteryCurrent));
-    veItemOwnerSet(device->power,
-                   veVariantSn32(&v, (sn32)batteryVoltage * batteryCurrent));
-    veItemOwnerSet(device->motorRpm, veVariantUn16(&v, abs(motorRpm)));
-    veItemOwnerSet(device->motorTemperature,
-                   veVariantUn16(&v, motorTemperature));
-    veItemOwnerSet(device->motorTorque, veVariantUn16(&v, abs(motorTorque)));
     veItemOwnerSet(device->motorDirection, veVariantUn8(&v, motorDirection));
-    veItemOwnerSet(device->controllerTemperature,
-                   veVariantUn16(&v, controllerTemperature));
+}
 
-    return veFalse;
+static void onMotorTemperatureResponse(CanOpenPendingSdoRequest *request) {
+    Device *device = (Device *)request->context;
+    VeVariant v;
+
+    veItemOwnerSet(device->motorTemperature,
+                   veVariantUn16(&v, request->response.data));
+}
+
+static void onMotorTorqueResponse(CanOpenPendingSdoRequest *request) {
+    Device *device = (Device *)request->context;
+    VeVariant v;
+
+    veItemOwnerSet(device->motorTorque,
+                   veVariantUn16(&v, request->response.data));
+}
+
+static void onControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
+    Device *device = (Device *)request->context;
+    VeVariant v;
+
+    veItemOwnerSet(device->controllerTemperature,
+                   veVariantUn16(&v, request->response.data));
+}
+
+static void onError(CanOpenPendingSdoRequest *request) {
+    Device *device;
+
+    device = (Device *)request->context;
+    disconnectFromNode(device->nodeId);
+}
+
+static void readRoutine(Device *device) {
+    canOpenReadSdoAsync(device->nodeId, 0x5100, 1, device,
+                        onBatteryVoltageResponse, onError);
+    canOpenReadSdoAsync(device->nodeId, 0x5100, 2, device,
+                        onBatteryCurrentResponse, onError);
+    canOpenReadSdoAsync(device->nodeId, 0x606c, 0, device, onMotorRpmResponse,
+                        onError);
+    canOpenReadSdoAsync(device->nodeId, 0x4600, 3, device,
+                        onMotorTemperatureResponse, onError);
+    canOpenReadSdoAsync(device->nodeId, 0x4602, 0xC, device,
+                        onMotorTorqueResponse, onError);
+    canOpenReadSdoAsync(device->nodeId, 0x5100, 4, device,
+                        onControllerTemperatureResponse, onError);
 }
 
 Driver sevconDriver = {
     .name = "sevcon",
     .productId = VE_PROD_ID_SEVCON_MOTORDRIVE,
-    .getSerialNumber = getSerialNumber,
     .readRoutine = readRoutine,
-    .onBeforeDbusInit = onBeforeDbusInit,
-    .onDestroy = onDestroy,
 };

@@ -33,7 +33,7 @@ typedef struct _Device {
     void *driverContext;
 } Device;
 
-veBool createDevice(Device *device, un8 nodeId);
+veBool createDevice(Device *device, un8 nodeId, un32 serialNumber);
 void destroyDevice(Device *device);
 
 #endif
