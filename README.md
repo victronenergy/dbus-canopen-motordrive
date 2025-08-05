@@ -58,7 +58,7 @@ The following Curtis webpage should indicate the capabilities of each model http
 
 ### Curtis F series support
 
-Driver has been tested on the Curtis F6-A however should work on any F series controllers.
+Driver has been tested on the Curtis F6-A software version 4.6.0.6 however should work on any F series controllers.
 
 ## How to install the driver
 
@@ -120,5 +120,8 @@ Turning off the engine/controller will remove the device.
 | 0x338F | 0 | Battery Current, 1 = 0.1A |
 | 0x352F | 0 | Motor RPM |
 | 0x3536 | 0 | Motor Temperature |
+| 0x3538 | 0 | Motor Torque |
 | 0x3000 | 0 | Controller Temperature |
 | 0x362F | 0 | Swap Motor Direction |
+
+Note that the device power is calculated as Capacitor Volts * Battery Current which is equivalent of the Curtis SDO 0x3390 (Battery Power)
