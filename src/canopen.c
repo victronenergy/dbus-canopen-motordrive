@@ -361,6 +361,7 @@ void handleReadSegmentedSdoResponse(ListItem *item,
         }
 
         if (pendingRequest->response.control & SDO_EXPEDITED) {
+            // @todo: confirm that's how it work
             data_length = 4 - ((pendingRequest->response.control &
                                 SDO_EXPEDITED_UNUSED_MASK) >>
                                2);
@@ -385,18 +386,24 @@ void handleReadSegmentedSdoResponse(ListItem *item,
         request.data = 0;
 
         pendingRequest->timeout = pltGetCount1ms();
+        *pendingRequest->segmented_length = 1;
 
         sendRawSdoRequest(pendingRequest->nodeId, &request);
         return;
     }
 
+    if (*pendingRequest->segmented_length == 1) {
+        *pendingRequest->segmented_length = 0;
+    }
+
     data_length =
-        8 - ((pendingRequest->response.control & SDO_SEGMENT_UNUSED_MASK) >> 1);
+        7 - ((pendingRequest->response.control & SDO_SEGMENT_UNUSED_MASK) >> 1);
     bytes_to_copy = *pendingRequest->segmented_length + data_length >
                             pendingRequest->segmented_max_length
                         ? pendingRequest->segmented_max_length -
                               *pendingRequest->segmented_length
                         : data_length;
+
     memcpy(pendingRequest->segmented_buffer + *pendingRequest->segmented_length,
            pendingRequest->response.byte + 1, bytes_to_copy);
     *pendingRequest->segmented_length += bytes_to_copy;
