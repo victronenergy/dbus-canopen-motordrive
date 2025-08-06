@@ -75,6 +75,7 @@ static void onScanChanged(VeItem *item) {
 
 static void onDiscoveredNodesChanged(VeItem *item) {
     un8ArrayDeserialize(&serviceManager.discoveredNodeIds, item);
+    connectToDiscoveredNodes();
 }
 
 void serviceManagerInit(void) {
