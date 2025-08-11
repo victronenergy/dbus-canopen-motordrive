@@ -1,6 +1,7 @@
 #ifndef __CANOPEN_H__
 #define __CANOPEN_H__
 
+#include <list.h>
 #include <velib/canhw/canhw.h>
 
 #define SDO_COMMAND_MASK 0b11100000
@@ -28,6 +29,12 @@
 
 #define MAX_SDO_SEND_TRIES 3
 
+typedef struct _CanOpenState {
+    List *pendingSdoRequests;
+} CanOpenState;
+
+extern CanOpenState canOpenState;
+
 typedef union {
     un8 byte[8];
 
@@ -42,9 +49,53 @@ typedef union {
 void logRawCanMessage(const VeRawCanMsg *message);
 void logSdoMessage(const SdoMessage *message);
 
-un8 readSdo(un8 nodeId, un32 index, un8 subindex, SdoMessage *response);
-un8 readSegmentedSdo(un8 nodeId, un32 index, un8 subindex, un8 *buffer,
+typedef enum {
+    READ_SDO,
+    READ_SEGMENTED_SDO,
+} CanOpenSdoRequestType;
+
+typedef enum {
+    NOT_SENT,
+    SENT,
+} CanOpenSdoRequestState;
+
+typedef struct _CanOpenPendingSdoRequest CanOpenPendingSdoRequest;
+
+typedef struct _CanOpenPendingSdoRequest {
+    un8 nodeId;
+    CanOpenSdoRequestType type;
+    CanOpenSdoRequestState state;
+    un16 index;
+    un8 subindex;
+    SdoMessage response;
+    void (*onResponse)(CanOpenPendingSdoRequest *request);
+    void (*onError)(CanOpenPendingSdoRequest *request);
+    un16 timeout;
+
+    void *context;
+    un8 *segmented_buffer;
+    un8 *segmented_length;
+    un8 segmented_max_length;
+    un8 segmented_toggle;
+} CanOpenPendingSdoRequest;
+
+void canOpenInit();
+void canOpenRx();
+void canOpenTx();
+
+void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
+                         void (*onResponse)(CanOpenPendingSdoRequest *request),
+                         void (*onError)(CanOpenPendingSdoRequest *request));
+
+void canOpenReadSegmentedSdoAsync(
+    un8 nodeId, un16 index, un8 subindex, void *context, un8 *buffer,
+    un8 *length, un8 max_length,
+    void (*onResponse)(CanOpenPendingSdoRequest *request),
+    void (*onError)(CanOpenPendingSdoRequest *request));
+
+un8 readSdo(un8 nodeId, un16 index, un8 subindex, SdoMessage *response);
+un8 readSegmentedSdo(un8 nodeId, un16 index, un8 subindex, un8 *buffer,
                      un8 *length, un8 max_length);
-un8 writeSdo(un8 nodeId, un32 index, un8 subindex, un32 data);
+un8 writeSdo(un8 nodeId, un16 index, un8 subindex, un32 data);
 
 #endif
