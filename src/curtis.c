@@ -75,7 +75,7 @@ static void onMotorTorqueResponse(CanOpenPendingSdoRequest *request) {
 
     memcpy(&torque, &request->response.data, sizeof(torque));
 
-    veItemOwnerSet(device->motorTorque, veVariantFloat(&v, torque));
+    veItemOwnerSet(device->motorTorque, veVariantFloat(&v, fabsf(torque)));
 }
 
 static void onControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
