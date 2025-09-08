@@ -6,6 +6,12 @@
 #include <string.h>
 #include <velib/vecan/products.h>
 
+static int swapMotorDirection = -1; // cache for Swap_Motor_Direction
+
+static void onSwapMotorDirectionResponse(CanOpenPendingSdoRequest *request) {
+    swapMotorDirection = request->response.data;
+}
+
 static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
     VeVariant v;
     Device *device;
@@ -44,6 +50,9 @@ static void onMotorRpmResponse(CanOpenPendingSdoRequest *request) {
 
     device = (Device *)request->context;
     rpm = request->response.data;
+    if (swapMotorDirection == 1) { // Throttle is reversed
+        rpm *= -1;
+    }
 
     veItemOwnerSet(device->motorRpm, veVariantUn16(&v, abs(rpm)));
 
@@ -94,6 +103,10 @@ static void onError(CanOpenPendingSdoRequest *request) {
 }
 
 static void readRoutine(Device *device) {
+    if (swapMotorDirection == -1) {
+        canOpenReadSdoAsync(device->nodeId, 0x362F, 0, device,
+                            onSwapMotorDirectionResponse, onError);
+    }
     canOpenReadSdoAsync(device->nodeId, 0x34C1, 0, device,
                         onBatteryVoltageResponse, onError);
     canOpenReadSdoAsync(device->nodeId, 0x338F, 0, device,
