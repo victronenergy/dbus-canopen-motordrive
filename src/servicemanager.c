@@ -14,6 +14,7 @@ ServiceManager serviceManager;
 
 static struct VeSettingProperties discoveredNodesType = {
     .type = VE_STR,
+    .def.value.CPtr = "",
 };
 
 static un8 name[255];
