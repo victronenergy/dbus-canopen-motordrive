@@ -26,7 +26,7 @@ static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
     float current;
 
     device = (Device *)request->context;
-    current = ((sn32)request->response.data) * 0.0625F;
+    current = ((sn16)request->response.data) * 0.0625F;
 
     veItemOwnerSet(device->current, veVariantFloat(&v, current));
 
