@@ -1,9 +1,11 @@
 #include <canopen.h>
+#include <ctype.h>
 #include <localsettings.h>
 #include <logger.h>
 #include <servicemanager.h>
 #include <stdio.h>
 #include <string.h>
+#include <velib/canhw/canhw_driver.h>
 #include <velib/platform/plt.h>
 #include <velib/types/ve_dbus_item.h>
 #include <velib/types/ve_item_def.h>
@@ -38,10 +40,8 @@ static void onScanResponse(CanOpenPendingSdoRequest *request) {
         // @todo: save discovered node name
     }
 
-    if (request->nodeId % 13 == 0) {
-        veItemSet(serviceManager.scanProgress,
-                  veVariantUn8(&v, request->nodeId * 100 / 127));
-    }
+    veItemSet(serviceManager.scanProgress,
+              veVariantUn8(&v, request->nodeId * 100 / 127));
 
     if (request->nodeId == 127) {
         onScanEnd();
@@ -49,6 +49,11 @@ static void onScanResponse(CanOpenPendingSdoRequest *request) {
 }
 
 static void onScanError(CanOpenPendingSdoRequest *request) {
+    VeVariant v;
+
+    veItemSet(serviceManager.scanProgress,
+              veVariantUn8(&v, request->nodeId * 100 / 127));
+
     if (request->nodeId == 127) {
         onScanEnd();
     }
@@ -81,6 +86,16 @@ static void onDiscoveredNodesChanged(VeItem *item) {
 
 void serviceManagerInit(void) {
     VeVariant v;
+    char canGwId[32];
+    char serviceName[256];
+    char settingsPrefix[256];
+
+    pltCanGwId(canGwId, sizeof(canGwId));
+
+    snprintf(serviceName, sizeof(serviceName),
+             "com.victronenergy.canopenmotordrive.%s", canGwId);
+    snprintf(settingsPrefix, sizeof(settingsPrefix),
+             "Settings/CanOpenMotordrive/%s", canGwId);
 
     serviceManager.dbus = veDbusConnectString(veDbusGetDefaultConnectString());
     if (!serviceManager.dbus) {
@@ -97,18 +112,16 @@ void serviceManagerInit(void) {
         veItemCreateQuantity(serviceManager.root, "ScanProgress",
                              veVariantUn8(&v, 0), &veUnitPercentage);
     serviceManager.discoveredNodes = veItemCreateSettingsProxy(
-        localSettings, "Settings/CanOpenMotordrive", serviceManager.root,
-        "DiscoveredNodes", veVariantFmt, &veUnitNone, &discoveredNodesType);
+        localSettings, settingsPrefix, serviceManager.root, "DiscoveredNodes",
+        veVariantFmt, &veUnitNone, &discoveredNodesType);
 
     un8ArrayInit(&serviceManager.discoveredNodeIds);
     veItemSetChanged(serviceManager.discoveredNodes, onDiscoveredNodesChanged);
 
     veDbusItemInit(serviceManager.dbus, serviceManager.root);
 
-    if (!veDbusChangeName(serviceManager.dbus,
-                          "com.victronenergy.canopenmotordrive")) {
-        error("could not register dbus service name "
-              "'com.victronenergy.canopenmotordrive'");
+    if (!veDbusChangeName(serviceManager.dbus, serviceName)) {
+        error("could not register dbus service name '%s'", serviceName);
         pltExit(3);
     }
 }
