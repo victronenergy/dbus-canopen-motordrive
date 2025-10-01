@@ -40,10 +40,8 @@ static void onScanResponse(CanOpenPendingSdoRequest *request) {
         // @todo: save discovered node name
     }
 
-    if (request->nodeId % 13 == 0) {
-        veItemSet(serviceManager.scanProgress,
-                  veVariantUn8(&v, request->nodeId * 100 / 127));
-    }
+    veItemSet(serviceManager.scanProgress,
+              veVariantUn8(&v, request->nodeId * 100 / 127));
 
     if (request->nodeId == 127) {
         onScanEnd();
@@ -51,6 +49,11 @@ static void onScanResponse(CanOpenPendingSdoRequest *request) {
 }
 
 static void onScanError(CanOpenPendingSdoRequest *request) {
+    VeVariant v;
+
+    veItemSet(serviceManager.scanProgress,
+              veVariantUn8(&v, request->nodeId * 100 / 127));
+
     if (request->nodeId == 127) {
         onScanEnd();
     }
@@ -83,19 +86,11 @@ static void onDiscoveredNodesChanged(VeItem *item) {
 
 void serviceManagerInit(void) {
     VeVariant v;
-    VeCanGateway *canGw;
     char canGwId[32];
-    char *c;
     char serviceName[256];
     char settingsPrefix[256];
 
-    canGw = veCanGwActive();
-    veCanGwId(canGw, canGwId, sizeof(canGwId));
-    for (c = canGwId; *c != 0; c += 1) {
-        if (!isalnum(*c)) {
-            *c = '_';
-        }
-    }
+    pltCanGwId(canGwId, sizeof(canGwId));
 
     snprintf(serviceName, sizeof(serviceName),
              "com.victronenergy.canopenmotordrive.%s", canGwId);
