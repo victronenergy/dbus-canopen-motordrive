@@ -4,6 +4,14 @@ Venus OS driver for Sevcon Gen4 & Curtis F series controllers: enables communica
 
 ![dbus-canopen-motordrive](doc/dbus-canopen-motordrive-header.png)
 
+## Features
+
+- Works out of the box without the need to re-configure the motor controller.
+- Compatible with Sevcon Gen4 AC & Curtis F series controllers.
+- Report motor power, rpm, direction, temperature, torque and controller temperature.
+- Easy setup. Scan the CAN bus and find compatible motor controllers.
+- Supports multiple controllers on the same bus (each controller must have a unique CANopen node ID).
+
 ## How to connect the Sevcon controller to a Victron GX product
 
 Victron GX products: https://www.victronenergy.com/live/venus-os:start.  
@@ -60,42 +68,20 @@ The following Curtis webpage should indicate the capabilities of each model http
 
 Driver has been tested on the Curtis F6-A software version 4.6.0.6 however should work on any F series controllers.
 
-## How to install the driver
+## How to configure the Victron GX product
 
-1. Download the latest `venus-data.zip` from the [releases page](https://github.com/citolen/dbus-canopen-motordrive/releases).
-2. Put `venus-data.zip` on an SD card or USB flash drive.
-3. Put the SD card or USB flash drive into the Victron GX product.
-4. Reboot.
-5. Once rebooted, remove the SD card or USB flash drive.
-6. Reboot again.
+Requires Venus OS version 3.70~45 or later.
 
-Once those steps are completed, if the controller is turned on and correctly connected, it will start reporting a motordrive.
+1. Go to Settings > Connectivity > `<CAN port>` > CAN-bus profile
 
-## Where is the driver installed
+2. Select either `CANopen Motor drive (250 kbit/s)` or `CANopen Motor drive (500 kbit/s)`.
+3. Go to Settings > Connectivity > `<CAN port>` > CANopen motor drives  
+4. Ensure the motor controller is properly connected to the Victron GX product's CAN port. (See instructions above).  
+Ensure the motor controller is powered ON.  
+Press scan.
 
-The driver is stored in `/data/dbus-canopen-motordrive`.  
-A symlink is created to `/opt/victronenergy/service/` to ensure it's loaded as a service on boot.
-
-### How to remove the driver
-
-SSH into venus. (See [guide on how to](https://www.victronenergy.com/live/ccgx:root_access))
-
-Run:  
-`rm /opt/victronenergy/service/dbus-canopen-motordrive`  
-`rm -rf /data/dbus-canopen-motordrive`
-
-## How does the driver work
-
-Upon being installed, the driver will start looking for the Sevcon/Curtis controller every 10 seconds.  
-If one is detected, a new device (motordrive) will show up in Venus.  
-The motor data will be refreshed once per second.
-
-The driver doesn't make use of TPDO/PDOs, instead every second it's requesting the data through SDOs.
-
-Turning off the engine/controller will remove the device.
-
-> [!WARNING]
-> The driver currently expects the controller to use CAN node ID 1. This will be configurable in the future.
+The CANopen node ID of the discovered controllers will be displayed in the field `Discovered motor drive IDs`.  
+Discovered controllers will persist through reboots and updates.  
 
 ## Sevcon - Which SDOs are used by the driver
 
