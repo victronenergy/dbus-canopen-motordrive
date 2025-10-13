@@ -41,7 +41,7 @@ void createDeviceIdentifier(Device *device) {
             *c = '_';
         }
     }
-    snprintf(device->identifier, sizeof(device->identifier), "%s_%s_%d",
+    snprintf(device->identifier, sizeof(device->identifier), "%s_%s_%u",
              canGwId, device->driver->name, device->serialNumber);
 }
 
@@ -49,7 +49,8 @@ void getVrmDeviceInstance(Device *device) {
     device->deviceInstance =
         veDbusGetVrmDeviceInstance(device->identifier, "motordrive", 99);
     if (device->deviceInstance < 0) {
-        error("could not get device instance. %d", device->deviceInstance);
+        error("could not get device instance for %s. %d", device->identifier,
+              device->deviceInstance);
         pltExit(2);
     }
 }
@@ -89,7 +90,7 @@ void createDbusTree(Device *device) {
     veItemCreateBasic(device->root, "Mgmt/ProcessVersion",
                       veVariantStr(&v, pltProgramVersion()));
 
-    snprintf(serialNumberStr, sizeof(serialNumberStr), "%d",
+    snprintf(serialNumberStr, sizeof(serialNumberStr), "%u",
              device->serialNumber);
     veItemCreateBasic(device->root, "Serial",
                       veVariantHeapStr(&v, serialNumberStr));
