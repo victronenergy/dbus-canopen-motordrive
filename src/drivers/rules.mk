@@ -1,0 +1,1 @@
+SRCS += curtis.c sevcon.c

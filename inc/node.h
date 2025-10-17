@@ -1,6 +1,8 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
+typedef struct _Node Node;
+
 #include <canopen.h>
 #include <device.h>
 #include <velib/types/ve_item_def.h>
