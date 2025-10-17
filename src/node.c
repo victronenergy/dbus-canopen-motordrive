@@ -1,8 +1,8 @@
-#include <curtis.h>
+#include <drivers/curtis.h>
+#include <drivers/sevcon.h>
 #include <logger.h>
 #include <node.h>
 #include <servicemanager.h>
-#include <sevcon.h>
 #include <stdlib.h>
 #include <string.h>
 #include <velib/platform/plt.h>
@@ -116,24 +116,32 @@ void connectToDiscoveredNodes() {
     }
 }
 
+static void onReadRoutineComplete(CanOpenPendingSdoRequest *request) {
+    Node *node;
+
+    node = (Node *)request->context;
+    if (!node->connected) {
+        return;
+    }
+
+    veItemSendPendingChanges(node->device->root);
+}
+
 void readFromConnectedNodes() {
     un8 nodeId;
     Node *node;
 
-    for (nodeId = 1, node = nodes; nodeId <= 127; nodeId += 1, node += 1) {
-        if (node->connected) {
-            node->device->driver->readRoutine(node->device);
-        }
+    // @todo:
+    // The queue still hasn't cleared up from the last read cycle,
+    // Perhaps we will need a queue per node at some point
+    if (canOpenState.pendingSdoRequests->first != NULL) {
+        return;
     }
-}
-
-void nodesTick() {
-    un8 nodeId;
-    Node *node;
 
     for (nodeId = 1, node = nodes; nodeId <= 127; nodeId += 1, node += 1) {
         if (node->connected) {
-            veItemTick(node->device->root);
+            node->device->driver->readRoutine(node);
+            canOpenQueueCallbackAsync(node, onReadRoutineComplete);
         }
     }
 }

@@ -43,213 +43,6 @@ void sendRawSdoRequest(un8 nodeId, const SdoMessage *request) {
     warning("CAN_SEND_TOO_MANY_FAILURES");
 }
 
-veBool waitForSdoResponse(un8 nodeId, SdoMessage *response) {
-    VeRawCanMsg message;
-
-    while (veCanRead(&message)) {
-        info("CAN_RESPONSE");
-        logRawCanMessage(&message);
-        if (message.canId == 0x580 + nodeId) {
-            memcpy(response->byte, message.mdata, message.length);
-            return veTrue;
-        }
-    }
-    return veFalse;
-}
-
-un8 sendSdoRequest(un8 nodeId, const SdoMessage *request,
-                   SdoMessage *response) {
-    un8 tries = 0;
-    un8 timeout;
-
-    info("SDO_SEND");
-    logSdoMessage(request);
-
-    while (tries < 3) {
-        info("SDO_SEND_TRY_%d", tries);
-
-        sendRawSdoRequest(nodeId, request);
-
-        timeout = 50;
-        while (waitForSdoResponse(nodeId, response) != veTrue && timeout > 0) {
-            timeout -= 1;
-            veWait(1000);
-        }
-
-        if (timeout != 0) {
-            return 0;
-        }
-
-        SdoMessage abort_request;
-        abort_request.control = SDO_ABORT_CONTROL;
-        abort_request.data = SDO_ABORT_TIMEOUT;
-        abort_request.index = request->index;
-        abort_request.subindex = request->subindex;
-        warning("SDO_SEND_ABORT_TIMEOUT");
-        logSdoMessage(&abort_request);
-        sendRawSdoRequest(nodeId, &abort_request);
-
-        if (tries < 2) {
-            veWait(10000);
-        }
-        tries += 1;
-    }
-
-    warning("SDO_SEND_TIMEOUT");
-
-    return SDO_ERROR_TIMEOUT;
-}
-
-un8 readSdo(un8 nodeId, un16 index, un8 subindex, SdoMessage *response) {
-    SdoMessage request;
-    request.control = SDO_READ_REQUEST_CONTROL;
-    request.index = index;
-    request.subindex = subindex;
-    request.data = 0;
-
-    info("SDO_READ nodeId=%d index=%X subindex%d", nodeId, index, subindex);
-
-    if (sendSdoRequest(nodeId, &request, response) != 0) {
-        warning("SDO_READ_ERROR_TIMEOUT");
-        return SDO_READ_ERROR_TIMEOUT;
-    }
-
-    if ((response->control & SDO_COMMAND_MASK) != SDO_READ_RESPONSE_CONTROL) {
-        warning("SDO_READ_ERROR");
-        return SDO_READ_ERROR;
-    }
-
-    if (response->control & SDO_EXPEDITED) {
-        warning("SDO_READ_SUCCESS");
-
-        return 0;
-    }
-
-    SdoMessage abort_request;
-    abort_request.control = SDO_ABORT_CONTROL;
-    abort_request.data = SDO_ABORT_OUT_OF_MEMORY;
-    abort_request.index = request.index;
-    abort_request.subindex = request.subindex;
-    warning("SDO_READ_ERROR_SEGMENT_TRANSFER");
-    sendRawSdoRequest(nodeId, &abort_request);
-
-    return SDO_READ_ERROR_SEGMENT_TRANSFER;
-}
-
-un8 writeSdo(un8 nodeId, un16 index, un8 subindex, un32 data) {
-    SdoMessage response;
-    SdoMessage request;
-    request.control = SDO_WRITE_REQUEST_CONTROL | SDO_EXPEDITED;
-    request.index = index;
-    request.subindex = subindex;
-    request.data = data;
-
-    info("SDO_WRITE nodeId=%d index=%X subindex%d data=%d", nodeId, index,
-         subindex);
-
-    if (sendSdoRequest(nodeId, &request, &response) != 0) {
-        warning("SDO_WRITE_ERROR_TIMEOUT");
-        return SDO_READ_ERROR_TIMEOUT;
-    }
-
-    if ((response.control & SDO_COMMAND_MASK) != SDO_WRITE_RESPONSE_CONTROL) {
-        warning("SDO_WRITE_ERROR");
-        return SDO_WRITE_ERROR;
-    }
-
-    return 0;
-}
-
-un8 readSegmentedSdo(un8 nodeId, un16 index, un8 subindex, un8 *buffer,
-                     un8 *length, un8 max_length) {
-    SdoMessage response;
-    SdoMessage abort_request;
-    SdoMessage request;
-
-    request.control = SDO_READ_REQUEST_CONTROL;
-    request.index = index;
-    request.subindex = subindex;
-    request.data = 0;
-
-    *length = 0;
-
-    info("SDO_READ_SEGMENTED nodeId=%d index=%X subindex%d", nodeId, index,
-         subindex);
-
-    if (sendSdoRequest(nodeId, &request, &response) != 0) {
-        warning("SDO_READ_ERROR_TIMEOUT");
-        return SDO_READ_ERROR_TIMEOUT;
-    }
-
-    if ((response.control & SDO_COMMAND_MASK) != SDO_READ_RESPONSE_CONTROL) {
-        warning("SDO_READ_ERROR");
-        return SDO_READ_ERROR;
-    }
-
-    if (response.control & SDO_EXPEDITED) {
-        un8 data_length =
-            4 - ((response.control & SDO_EXPEDITED_UNUSED_MASK) >> 2);
-        un8 bytes_to_copy = data_length > max_length ? max_length : data_length;
-        memcpy(buffer, &response.data, bytes_to_copy);
-        *length = bytes_to_copy;
-
-        return 0;
-    }
-
-    un8 toggle = 0;
-
-    while (1) {
-        request.control = (SDO_READ_SEGMENT_REQUEST | toggle);
-        request.index = 0;
-        request.subindex = 0;
-        request.data = 0;
-
-        if (sendSdoRequest(nodeId, &request, &response) != 0) {
-            warning("SDO_READ_ERROR_TIMEOUT");
-            return SDO_READ_ERROR_TIMEOUT;
-        }
-
-        if ((response.control & (SDO_COMMAND_MASK | SDO_SEGMENT_TOGGLE)) !=
-            (SDO_READ_SEGMENT_RESPONSE | toggle)) {
-            abort_request.control = SDO_ABORT_CONTROL;
-            abort_request.data = SDO_ABORT_OUT_OF_MEMORY;
-            abort_request.index = request.index;
-            abort_request.subindex = request.subindex;
-
-            sendRawSdoRequest(nodeId, &abort_request);
-            warning("SDO_READ_ERROR_SEGMENT_MISMATCH");
-            return SDO_READ_ERROR_SEGMENT_MISMATCH;
-        }
-
-        un8 data_length =
-            8 - ((response.control & SDO_SEGMENT_UNUSED_MASK) >> 1);
-        un8 bytes_to_copy = *length + data_length > max_length
-                                ? max_length - *length
-                                : data_length;
-        memcpy(buffer, response.byte + 1, bytes_to_copy);
-        buffer += bytes_to_copy;
-        *length += bytes_to_copy;
-
-        if (response.control & SDO_SEGMENT_END) {
-            return 0;
-        }
-
-        if (*length == max_length) {
-            abort_request.control = SDO_ABORT_CONTROL;
-            abort_request.data = SDO_ABORT_OUT_OF_MEMORY;
-            abort_request.index = request.index;
-            abort_request.subindex = request.subindex;
-
-            sendRawSdoRequest(nodeId, &abort_request);
-
-            warning("SDO_READ_ERROR_SEGMENT_MAX_LENGTH");
-            return SDO_READ_ERROR_SEGMENT_MAX_LENGTH;
-        }
-
-        toggle = toggle ? 0 : SDO_SEGMENT_TOGGLE;
-    }
-}
-
 void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
                          void (*onResponse)(CanOpenPendingSdoRequest *request),
                          void (*onError)(CanOpenPendingSdoRequest *request)) {
@@ -278,6 +71,33 @@ void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
     info("SDO_READ_ASYNC nodeId=%d index=%X subindex=%X",
          pendingRequest->nodeId, pendingRequest->index,
          pendingRequest->subindex);
+
+    listAdd(canOpenState.pendingSdoRequests, pendingRequest);
+}
+
+void canOpenQueueCallbackAsync(
+    void *context, void (*callback)(CanOpenPendingSdoRequest *request)) {
+    CanOpenPendingSdoRequest *pendingRequest;
+
+    pendingRequest = malloc(sizeof(*pendingRequest));
+    if (!pendingRequest) {
+        error("Failed to allocate memory for CanOpenPendingSdoRequest");
+        pltExit(5);
+    }
+
+    pendingRequest->nodeId = 0;
+    pendingRequest->type = QUEUE_CALLBACK;
+    pendingRequest->state = NOT_SENT;
+    pendingRequest->index = 0;
+    pendingRequest->subindex = 0;
+    pendingRequest->onResponse = callback;
+    pendingRequest->onError = NULL;
+    pendingRequest->timeout = 0;
+    pendingRequest->context = context;
+    pendingRequest->segmented_buffer = NULL;
+    pendingRequest->segmented_length = NULL;
+    pendingRequest->segmented_max_length = 0;
+    pendingRequest->segmented_toggle = 0;
 
     listAdd(canOpenState.pendingSdoRequests, pendingRequest);
 }
@@ -453,6 +273,9 @@ void handleSdoResponse(ListItem *item,
     case READ_SEGMENTED_SDO:
         handleReadSegmentedSdoResponse(item, pendingRequest);
         break;
+    case QUEUE_CALLBACK:
+    default:
+        break;
     }
 }
 
@@ -503,6 +326,13 @@ void handleReadSegmentedSdoRequest(ListItem *item,
     sendRawSdoRequest(pendingRequest->nodeId, &request);
 }
 
+void handleQueueCallbackRequest(ListItem *item,
+                                CanOpenPendingSdoRequest *pendingRequest) {
+    if (pendingRequest->onResponse) {
+        pendingRequest->onResponse(pendingRequest);
+    }
+}
+
 void handleSdoRequest(ListItem *item,
                       CanOpenPendingSdoRequest *pendingRequest) {
     switch (pendingRequest->type) {
@@ -511,6 +341,9 @@ void handleSdoRequest(ListItem *item,
         break;
     case READ_SEGMENTED_SDO:
         handleReadSegmentedSdoRequest(item, pendingRequest);
+        break;
+    case QUEUE_CALLBACK:
+        handleQueueCallbackRequest(item, pendingRequest);
         break;
     }
     pendingRequest->state = SENT;
@@ -534,6 +367,11 @@ void canOpenTx() {
             warning("SDO_TIMEOUT");
             listRemove(canOpenState.pendingSdoRequests, iterator);
             pendingRequest->onError(pendingRequest);
+            free(pendingRequest);
+        }
+
+        if (pendingRequest->type == QUEUE_CALLBACK) {
+            listRemove(canOpenState.pendingSdoRequests, iterator);
             free(pendingRequest);
         }
     }

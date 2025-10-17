@@ -52,6 +52,7 @@ void logSdoMessage(const SdoMessage *message);
 typedef enum {
     READ_SDO,
     READ_SEGMENTED_SDO,
+    QUEUE_CALLBACK,
 } CanOpenSdoRequestType;
 
 typedef enum {
@@ -93,9 +94,7 @@ void canOpenReadSegmentedSdoAsync(
     void (*onResponse)(CanOpenPendingSdoRequest *request),
     void (*onError)(CanOpenPendingSdoRequest *request));
 
-un8 readSdo(un8 nodeId, un16 index, un8 subindex, SdoMessage *response);
-un8 readSegmentedSdo(un8 nodeId, un16 index, un8 subindex, un8 *buffer,
-                     un8 *length, un8 max_length);
-un8 writeSdo(un8 nodeId, un16 index, un8 subindex, un32 data);
+void canOpenQueueCallbackAsync(
+    void *context, void (*callback)(CanOpenPendingSdoRequest *request));
 
 #endif

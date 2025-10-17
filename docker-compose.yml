@@ -5,8 +5,11 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./:/workspace/dbus-canopen-motordrive
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
     container_name: dbus-canopen-motordrive-build
     platform: linux/amd64
     tty: true
     stdin_open: true
+    network_mode: "host"
+    privileged: true
     command: bash
