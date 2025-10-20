@@ -127,7 +127,7 @@ static void onReadRoutineComplete(CanOpenPendingSdoRequest *request) {
     veItemSendPendingChanges(node->device->root);
 }
 
-void readFromConnectedNodes() {
+void readFromConnectedNodes(veBool fast) {
     un8 nodeId;
     Node *node;
 
@@ -140,7 +140,11 @@ void readFromConnectedNodes() {
 
     for (nodeId = 1, node = nodes; nodeId <= 127; nodeId += 1, node += 1) {
         if (node->connected) {
-            node->device->driver->readRoutine(node);
+            if (fast == veTrue) {
+                node->device->driver->fastReadRoutine(node);
+            } else {
+                node->device->driver->readRoutine(node);
+            }
             canOpenQueueCallbackAsync(node, onReadRoutineComplete);
         }
     }

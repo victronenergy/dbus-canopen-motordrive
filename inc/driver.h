@@ -10,6 +10,7 @@ typedef struct _Driver {
     const char *name;
     un16 productId;
     void (*readRoutine)(Node *node);
+    void (*fastReadRoutine)(Node *node);
 } Driver;
 
 #endif

@@ -23,7 +23,7 @@ Driver *getDriverForNodeName(un8 *name, un8 length);
 void connectToNode(un8 nodeId);
 void connectToDiscoveredNodes();
 void disconnectFromNode(un8 nodeId);
-void readFromConnectedNodes();
+void readFromConnectedNodes(veBool fast);
 void nodesTick();
 void nodesInit();
 

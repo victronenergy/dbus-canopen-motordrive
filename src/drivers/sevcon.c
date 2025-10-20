@@ -138,8 +138,14 @@ static void readRoutine(Node *node) {
                         onControllerTemperatureResponse, onError);
 }
 
+static void fastReadRoutine(Node *node) {
+    canOpenReadSdoAsync(node->device->nodeId, 0x606c, 0, node,
+                        onMotorRpmResponse, onError);
+}
+
 Driver sevconDriver = {
     .name = "sevcon",
     .productId = VE_PROD_ID_SEVCON_MOTORDRIVE,
     .readRoutine = readRoutine,
+    .fastReadRoutine = fastReadRoutine,
 };

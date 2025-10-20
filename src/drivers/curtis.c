@@ -155,8 +155,14 @@ static void readRoutine(Node *node) {
                         onControllerTemperatureResponse, onError);
 }
 
+static void fastReadRoutine(Node *node) {
+    canOpenReadSdoAsync(node->device->nodeId, 0x352F, 0, node,
+                        onMotorRpmResponse, onError);
+}
+
 Driver curtisDriver = {
     .name = "curtis",
     .productId = VE_PROD_ID_CURTIS_MOTORDRIVE,
     .readRoutine = readRoutine,
+    .fastReadRoutine = fastReadRoutine,
 };
