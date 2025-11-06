@@ -13,5 +13,9 @@ SUBDIRS += src
 INCLUDES += ./inc
 $T_DEPS += $(call subtree_tgts,$(d)/src)
 
+SUBDIRS += src/drivers
+INCLUDES += ./inc/drivers
+$T_DEPS += $(call subtree_tgts,$(d)/src/drivers)
+
 $T_LIBS += -lpthread -ldl $(shell pkg-config --libs dbus-1) -levent -lm
 CC_CONFIG_CFLAGS += -DDBUS $(shell pkg-config --cflags dbus-1) -DVERSION=\"$(VERSION)\"

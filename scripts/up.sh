@@ -7,4 +7,6 @@ if [ ! -f "build/toolchain.sh" ]; then
     wget https://updates.victronenergy.com/feeds/venus/release/sdk/venus-scarthgap-x86_64-arm-cortexa8hf-neon-toolchain-v3.65.sh -O build/toolchain.sh
 fi
 
+docker run --privileged --rm tonistiigi/binfmt --install amd64
+
 docker compose up -d --build

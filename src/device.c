@@ -71,8 +71,7 @@ void createDbusTree(Device *device) {
     char serialNumberStr[11];
     char settingsPath[128];
 
-    device->root =
-        veItemGetOrCreateUid(veValueTree(), "com.victonenergy.producer");
+    device->root = veItemGetOrCreateUid(veValueTree(), device->identifier);
 
     veItemCreateBasic(device->root, "DeviceInstance",
                       veVariantUn16(&v, device->deviceInstance));
