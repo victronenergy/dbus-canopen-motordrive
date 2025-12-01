@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <memory.h>
 #include <velib/platform/plt.h>
 
 void un8ArrayInit(Un8Array *array) {
@@ -15,7 +16,7 @@ void un8ArrayAdd(Un8Array *array, un8 nodeId) {
     if (array->count >= array->capacity) {
         array->capacity = array->capacity ? array->capacity * 2 : 4;
         array->data =
-            realloc(array->data, array->capacity * sizeof(*array->data));
+            _realloc(array->data, array->capacity * sizeof(*array->data));
         if (!array->data) {
             error("failed to allocate memory for Un8Array");
             pltExit(5);
@@ -26,7 +27,7 @@ void un8ArrayAdd(Un8Array *array, un8 nodeId) {
 }
 
 void un8ArrayClear(Un8Array *array) {
-    free(array->data);
+    _free(array->data);
     array->data = NULL;
     array->count = 0;
     array->capacity = 0;
@@ -39,7 +40,7 @@ void un8ArraySerialize(const Un8Array *array, VeItem *item) {
     char *result;
 
     bufferSize = 4 * array->count + 1;
-    result = malloc(bufferSize);
+    result = _malloc(bufferSize);
     if (result == NULL) {
         error("failed to allocate memory for serialization");
         pltExit(5);
@@ -55,7 +56,7 @@ void un8ArraySerialize(const Un8Array *array, VeItem *item) {
     }
 
     veItemSet(item, veVariantStr(&v, result));
-    free(result);
+    _free(result);
 }
 
 void un8ArrayDeserialize(Un8Array *array, VeItem *item) {

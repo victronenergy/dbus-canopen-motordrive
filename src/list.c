@@ -2,11 +2,12 @@
 #include <logger.h>
 #include <stdlib.h>
 #include <velib/platform/plt.h>
+#include <memory.h>
 
 List *listCreate() {
     List *list;
 
-    list = malloc(sizeof(List));
+    list = _malloc(sizeof(List));
     if (list == NULL) {
         error("failed to allocate memory for List");
         pltExit(5);
@@ -22,7 +23,7 @@ void listDestroy(List *list) {
     }
 
     listClear(list);
-    free(list);
+    _free(list);
 }
 
 void listAdd(List *list, void *data) {
@@ -32,7 +33,7 @@ void listAdd(List *list, void *data) {
         return;
     }
 
-    newItem = malloc(sizeof(ListItem));
+    newItem = _malloc(sizeof(ListItem));
     if (newItem == NULL) {
         error("failed to allocate memory for ListItem");
         pltExit(5);
@@ -69,7 +70,7 @@ void listRemove(List *list, ListItem *item) {
         item->next->prev = item->prev;
     }
 
-    free(item);
+    _free(item);
 }
 
 void listClear(List *list) {
@@ -82,7 +83,7 @@ void listClear(List *list) {
     while (list->first) {
         current = list->first;
         list->first = current->next;
-        free(current);
+        _free(current);
     }
 
     list->first = NULL;
