@@ -1,11 +1,23 @@
 #include "BaseFixture.hpp"
 
 extern "C" {
-#include "device.h"
+#include <device.h>
+#include <localsettings.h>
 #include <velib/vecan/products.h>
 }
 
-class DeviceTest : public BaseFixture {};
+class DeviceTest : public BaseFixture {
+protected:
+    void SetUp() override {
+        BaseFixture::SetUp();
+
+        localSettingsInit();
+    }
+
+    void TearDown() override {
+        BaseFixture::TearDown();
+    }
+};
 
 Driver dummyDriver = {
     .name = "DummyDriver",

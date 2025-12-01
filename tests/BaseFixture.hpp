@@ -3,11 +3,8 @@
 #include <gtest/gtest.h>
 #include "environment.hpp"
 
-extern "C" {
-    #include <localsettings.h>
-}
-
 static struct VeDbus fakeDbusInstance;
+static struct VeRemoteService fakeRemoteService;
 
 class BaseFixture : public ::testing::Test {
 protected:
@@ -22,6 +19,8 @@ protected:
 
         RESET_FAKE(veDbusConnectString);
         veDbusConnectString_fake.return_val = &fakeDbusInstance;
+        RESET_FAKE(veDbusGetDefaultBus);
+        veDbusGetDefaultBus_fake.return_val = &fakeDbusInstance;
         RESET_FAKE(veDbusGetVrmDeviceInstanceExt);
         veDbusGetVrmDeviceInstanceExt_fake.return_val = 9999;
         RESET_FAKE(veDbusChangeName);
@@ -32,8 +31,8 @@ protected:
         veCanRead_fake.return_val = veTrue;
         RESET_FAKE(pltGetCount1ms);
         pltGetCount1ms_fake.return_val = 0;
-
-        localSettingsInit();
+        RESET_FAKE(veDbusAddRemoteService);
+        veDbusAddRemoteService_fake.return_val = &fakeRemoteService;
     }
 
     void TearDown() override {

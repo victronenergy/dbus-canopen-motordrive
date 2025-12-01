@@ -120,6 +120,7 @@ add_executable(dbus-canopen-motordrive-test
     test_array.cpp
     test_device.cpp
     test_canopen.cpp
+    test_localsettings.cpp
 )
 
 target_link_directories(dbus-canopen-motordrive-test PRIVATE

@@ -8,6 +8,7 @@ DEFINE_FAKE_VALUE_FUNC2(void *, _realloc, void *, size_t);
 DEFINE_FAKE_VOID_FUNC1(_free, void *);
 
 DEFINE_FAKE_VALUE_FUNC1(struct VeDbus *, veDbusConnectString, char const *);
+DEFINE_FAKE_VALUE_FUNC0(struct VeDbus *, veDbusGetDefaultBus);
 DEFINE_FAKE_VALUE_FUNC5(sn32, veDbusGetVrmDeviceInstanceExt, char const *,
                         char const *, sn32, VeVariant *, veBool);
 DEFINE_FAKE_VALUE_FUNC2(veBool, veDbusChangeName, struct VeDbus *,
@@ -15,12 +16,12 @@ DEFINE_FAKE_VALUE_FUNC2(veBool, veDbusChangeName, struct VeDbus *,
 DEFINE_FAKE_VALUE_FUNC1(veBool, veCanSend, VeRawCanMsg *);
 DEFINE_FAKE_VALUE_FUNC1(veBool, veCanRead, VeRawCanMsg *);
 DEFINE_FAKE_VALUE_FUNC0(un16, pltGetCount1ms);
+DEFINE_FAKE_VALUE_FUNC3(struct VeRemoteService *, veDbusAddRemoteService,
+                        char const *, struct VeItem *, veBool);
 }
 
-static struct VeDbus fakeDbusInstance;
 static VeCanGateway fakeVeCanGatewayInstance;
 static struct VeItem fakeRoot;
-static struct VeRemoteService fakeRemoteService;
 
 extern "C" {
 
@@ -53,15 +54,7 @@ char const *veDbusGetDefaultConnectString(void) {
     return "unix:path=/var/run/dbus/fake_bus_socket";
 }
 
-struct VeDbus *veDbusGetDefaultBus(void) { return &fakeDbusInstance; }
-
 void veDbusSetListeningDbus(struct VeDbus *dbus) {}
-
-struct VeRemoteService *veDbusAddRemoteService(char const *serviceName,
-                                               struct VeItem *dbusRoot,
-                                               veBool block) {
-    return &fakeRemoteService;
-}
 
 VeCanGateway *veCanGwActive(void) { return &fakeVeCanGatewayInstance; }
 

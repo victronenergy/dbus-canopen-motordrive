@@ -18,6 +18,7 @@ DECLARE_FAKE_VALUE_FUNC2(void *, _realloc, void *, size_t);
 DECLARE_FAKE_VOID_FUNC1(_free, void *);
 
 DECLARE_FAKE_VALUE_FUNC1(struct VeDbus *, veDbusConnectString, char const *);
+DECLARE_FAKE_VALUE_FUNC0(struct VeDbus *, veDbusGetDefaultBus);
 DECLARE_FAKE_VALUE_FUNC5(sn32, veDbusGetVrmDeviceInstanceExt, char const *,
                          char const *, sn32, VeVariant *, veBool);
 DECLARE_FAKE_VALUE_FUNC2(veBool, veDbusChangeName, struct VeDbus *,
@@ -25,6 +26,8 @@ DECLARE_FAKE_VALUE_FUNC2(veBool, veDbusChangeName, struct VeDbus *,
 DECLARE_FAKE_VALUE_FUNC1(veBool, veCanSend, VeRawCanMsg *);
 DECLARE_FAKE_VALUE_FUNC1(veBool, veCanRead, VeRawCanMsg *);
 DECLARE_FAKE_VALUE_FUNC0(un16, pltGetCount1ms);
+DECLARE_FAKE_VALUE_FUNC3(struct VeRemoteService *, veDbusAddRemoteService,
+                         char const *, struct VeItem *, veBool);
 }
 
 extern "C" {
@@ -50,7 +53,6 @@ un8 veCanShowTrace(un8 dump);
 void veTodo(void);
 
 char const *veDbusGetDefaultConnectString(void);
-struct VeDbus *veDbusGetDefaultBus(void);
 void veDbusSetListeningDbus(struct VeDbus *dbus);
 struct VeRemoteService *veDbusAddRemoteService(char const *serviceName,
                                                struct VeItem *dbusRoot,
