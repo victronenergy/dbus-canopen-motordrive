@@ -32,6 +32,8 @@ include_directories(${EVENT_INCLUDE_DIRS})
 add_library(dbus-canopen-motordrive-lib
     ../src/list.c
     ../src/array.c
+    ../src/device.c
+    ../src/localsettings.c
 
     ../velib/task/task/platform_init.c
     ../velib/task/task/console_no_arguments.c
@@ -39,6 +41,18 @@ add_library(dbus-canopen-motordrive-lib
     ../velib/src/types/ve_stamp.c
     ../velib/src/types/ve_str.c
     ../velib/src/types/ve_variant.c
+    ../velib/src/types/ve_variant_print.c
+    ../velib/src/types/ve_item.c
+    ../velib/src/utils/ve_item_utils.c
+    ../velib/src/vecan/products.c
+    ../velib/src/io/ve_iostream_items_le.c
+    ../velib/src/io/ve_iostream_items.c
+    ../velib/src/io/ve_istream.c
+    ../velib/src/io/ve_ostream.c
+    ../velib/src/io/ve_istream_le.c
+    ../velib/src/io/ve_ostream_le.c
+    ../velib/src/io/ve_istream_variant_le.c
+    ../velib/src/base/ve_string.c
 )
 
 # add_library(velib
@@ -55,6 +69,8 @@ target_include_directories(dbus-canopen-motordrive-lib
         ${PROJECT_SOURCE_DIR}/../inc
     PUBLIC
         ${PROJECT_SOURCE_DIR}/../velib/inc
+    PUBLIC
+        ${PROJECT_SOURCE_DIR}/../velib/src/types
 )
 
 # target_include_directories(velib
@@ -100,6 +116,7 @@ add_executable(dbus-canopen-motordrive-test
     environment.cpp
     test_list.cpp
     test_array.cpp
+    test_device.cpp
 )
 
 target_link_directories(dbus-canopen-motordrive-test PRIVATE

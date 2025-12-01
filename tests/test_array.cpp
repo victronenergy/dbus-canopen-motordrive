@@ -63,17 +63,17 @@ TEST_F(ArrayTest, serialize) {
     un8ArrayAdd(&array, 3);
     un8ArrayAdd(&array, 4);
 
-    veItemSet_fake.custom_fake = (veBool (*)(VeItem *, VeVariant *)) +[](VeItem *item, VeVariant *variant) {
-        EXPECT_EQ(variant->type.tp, VE_STR);
-        EXPECT_STREQ((char*)variant->value.Ptr, "1,2,3,4");
-        return veTrue;
-    };
-
     VeItem item;
+    memset(&item, 0, sizeof(item));
     un8ArraySerialize(&array, &item);
-    EXPECT_EQ(veItemSet_fake.call_count, 1);
+
+    VeVariant v;
+    veItemLocalValue(&item, &v);
+    EXPECT_EQ(v.type.tp, VE_HEAP_STR);
+    EXPECT_STREQ((char *)v.value.Ptr, "1,2,3,4");
 
     un8ArrayClear(&array);
+    veVariantFree(&v);
 }
 
 TEST_F(ArrayTest, serializeMallocFailure) {
@@ -89,7 +89,8 @@ TEST_F(ArrayTest, serializeMallocFailure) {
     un8ArrayAdd(&array, 4);
 
     VeItem item;
-    ASSERT_EXIT(un8ArraySerialize(&array, &item);, ::testing::ExitedWithCode(5), "");
+    ASSERT_EXIT(un8ArraySerialize(&array, &item);
+                , ::testing::ExitedWithCode(5), "");
 }
 
 TEST_F(ArrayTest, deserialize) {

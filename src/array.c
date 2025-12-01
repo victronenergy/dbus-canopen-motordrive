@@ -55,7 +55,7 @@ void un8ArraySerialize(const Un8Array *array, VeItem *item) {
         }
     }
 
-    veItemSet(item, veVariantStr(&v, result));
+    veItemSet(item, veVariantHeapStr(&v, result));
     _free(result);
 }
 

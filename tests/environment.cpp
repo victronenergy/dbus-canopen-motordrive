@@ -7,8 +7,17 @@ DEFINE_FAKE_VALUE_FUNC1(void *, _malloc, size_t);
 DEFINE_FAKE_VALUE_FUNC2(void *, _realloc, void *, size_t);
 DEFINE_FAKE_VOID_FUNC1(_free, void *);
 
-DEFINE_FAKE_VALUE_FUNC2(veBool, veItemSet, VeItem *, VeVariant *);
+DEFINE_FAKE_VALUE_FUNC1(struct VeDbus *, veDbusConnectString, char const *);
+DEFINE_FAKE_VALUE_FUNC5(sn32, veDbusGetVrmDeviceInstanceExt, char const *,
+                        char const *, sn32, VeVariant *, veBool);
+DEFINE_FAKE_VALUE_FUNC2(veBool, veDbusChangeName, struct VeDbus *,
+                        char const *);
 }
+
+static struct VeDbus fakeDbusInstance;
+static VeCanGateway fakeVeCanGatewayInstance;
+static struct VeItem fakeRoot;
+static struct VeRemoteService fakeRemoteService;
 
 extern "C" {
 
@@ -36,8 +45,35 @@ veBool veCanOpen(void) { return veTrue; }
 veBool veCanSetBitRate(un16 kbit) { return veTrue; }
 un8 veCanShowTrace(un8 dump) { return 0; }
 void veTodo(void) {}
-VeVariant* veItemLocalValue(VeItem *item, VeVariant *var) {
-    *var = item->variant;
-    return var;
+
+char const *veDbusGetDefaultConnectString(void) {
+    return "unix:path=/var/run/dbus/fake_bus_socket";
+}
+
+struct VeDbus *veDbusGetDefaultBus(void) { return &fakeDbusInstance; }
+
+void veDbusSetListeningDbus(struct VeDbus *dbus) {}
+
+struct VeRemoteService *veDbusAddRemoteService(char const *serviceName,
+                                               struct VeItem *dbusRoot,
+                                               veBool block) {
+    return &fakeRemoteService;
+}
+
+VeCanGateway *veCanGwActive(void) { return &fakeVeCanGatewayInstance; }
+
+size_t veCanGwId(VeCanGateway *gw, char *buf, size_t len) {
+    return ve_snprintf(buf, len, "Fake:Gateway");
+}
+
+struct VeItem *veValueTree(void) { return &fakeRoot; }
+
+void veDbusItemInit(VeDbus *dbus, struct VeItem *items) {}
+void veDbusDisconnect(VeDbus *dbus) {}
+void veDbusItemTick(void) {}
+veBool veDBusAddLocalSetting(struct VeItem *item, VeVariant *defaultValue,
+                             VeVariant *minValue, VeVariant *maxValue,
+                             veBool hang) {
+    return veTrue;
 }
 }
