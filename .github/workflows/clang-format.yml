@@ -13,8 +13,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Add LLVM APT repo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+
+      - name: Install clang-format-21
+        run: sudo apt-get install -y clang-format-21
+
+      - name: Make clang-format the default
+        run: sudo ln -sf /usr/bin/clang-format-21 /usr/bin/clang-format
 
       - name: Check formatting
-        run: ./scripts/check-formatting.sh
+        run: |
+          clang-format --version
+          ./scripts/check-formatting.sh
