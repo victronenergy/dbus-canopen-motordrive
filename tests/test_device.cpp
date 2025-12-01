@@ -156,7 +156,7 @@ TEST_F(DeviceTest, init) {
         debug,
         "/Fake_Gateway_DummyDriver_12345678/Settings/Motor/DirectionInverted");
     veItemLocalValue(device.motorDirectionInverted, &v);
-    EXPECT_EQ(v.type.tp, VE_UNKNOWN);
+    EXPECT_EQ(v.type.tp, VE_SN32);
 
     destroyDevice(&device);
 }
