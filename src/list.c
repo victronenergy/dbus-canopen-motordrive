@@ -1,8 +1,8 @@
 #include <list.h>
 #include <logger.h>
+#include <memory.h>
 #include <stdlib.h>
 #include <velib/platform/plt.h>
-#include <memory.h>
 
 List *listCreate() {
     List *list;

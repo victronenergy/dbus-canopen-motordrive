@@ -1,9 +1,9 @@
 #include <array.h>
 #include <logger.h>
+#include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <memory.h>
 #include <velib/platform/plt.h>
 
 void un8ArrayInit(Un8Array *array) {

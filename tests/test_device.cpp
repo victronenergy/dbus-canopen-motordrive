@@ -7,16 +7,14 @@ extern "C" {
 }
 
 class DeviceTest : public BaseFixture {
-protected:
+  protected:
     void SetUp() override {
         BaseFixture::SetUp();
 
         localSettingsInit();
     }
 
-    void TearDown() override {
-        BaseFixture::TearDown();
-    }
+    void TearDown() override { BaseFixture::TearDown(); }
 };
 
 Driver dummyDriver = {

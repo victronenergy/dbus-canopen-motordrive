@@ -1,13 +1,13 @@
 #pragma once
 
-#include <gtest/gtest.h>
 #include "environment.hpp"
+#include <gtest/gtest.h>
 
 static struct VeDbus fakeDbusInstance;
 static struct VeRemoteService fakeRemoteService;
 
 class BaseFixture : public ::testing::Test {
-protected:
+  protected:
     void SetUp() override {
         RESET_FAKE(_malloc);
         RESET_FAKE(_realloc);
@@ -35,7 +35,5 @@ protected:
         veDbusAddRemoteService_fake.return_val = &fakeRemoteService;
     }
 
-    void TearDown() override {
-
-    }
+    void TearDown() override {}
 };
