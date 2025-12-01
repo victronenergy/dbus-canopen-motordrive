@@ -22,6 +22,9 @@ DECLARE_FAKE_VALUE_FUNC5(sn32, veDbusGetVrmDeviceInstanceExt, char const *,
                          char const *, sn32, VeVariant *, veBool);
 DECLARE_FAKE_VALUE_FUNC2(veBool, veDbusChangeName, struct VeDbus *,
                          char const *);
+DECLARE_FAKE_VALUE_FUNC1(veBool, veCanSend, VeRawCanMsg *);
+DECLARE_FAKE_VALUE_FUNC1(veBool, veCanRead, VeRawCanMsg *);
+DECLARE_FAKE_VALUE_FUNC0(un16, pltGetCount1ms);
 }
 
 extern "C" {

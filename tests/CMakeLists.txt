@@ -34,6 +34,7 @@ add_library(dbus-canopen-motordrive-lib
     ../src/array.c
     ../src/device.c
     ../src/localsettings.c
+    ../src/canopen.c
 
     ../velib/task/task/platform_init.c
     ../velib/task/task/console_no_arguments.c
@@ -44,6 +45,7 @@ add_library(dbus-canopen-motordrive-lib
     ../velib/src/types/ve_variant_print.c
     ../velib/src/types/ve_item.c
     ../velib/src/utils/ve_item_utils.c
+    ../velib/src/utils/ve_timer.c
     ../velib/src/vecan/products.c
     ../velib/src/io/ve_iostream_items_le.c
     ../velib/src/io/ve_iostream_items.c
@@ -117,6 +119,7 @@ add_executable(dbus-canopen-motordrive-test
     test_list.cpp
     test_array.cpp
     test_device.cpp
+    test_canopen.cpp
 )
 
 target_link_directories(dbus-canopen-motordrive-test PRIVATE

@@ -12,6 +12,9 @@ DEFINE_FAKE_VALUE_FUNC5(sn32, veDbusGetVrmDeviceInstanceExt, char const *,
                         char const *, sn32, VeVariant *, veBool);
 DEFINE_FAKE_VALUE_FUNC2(veBool, veDbusChangeName, struct VeDbus *,
                         char const *);
+DEFINE_FAKE_VALUE_FUNC1(veBool, veCanSend, VeRawCanMsg *);
+DEFINE_FAKE_VALUE_FUNC1(veBool, veCanRead, VeRawCanMsg *);
+DEFINE_FAKE_VALUE_FUNC0(un16, pltGetCount1ms);
 }
 
 static struct VeDbus fakeDbusInstance;

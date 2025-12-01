@@ -26,6 +26,12 @@ protected:
         veDbusGetVrmDeviceInstanceExt_fake.return_val = 9999;
         RESET_FAKE(veDbusChangeName);
         veDbusChangeName_fake.return_val = veTrue;
+        RESET_FAKE(veCanSend);
+        veCanSend_fake.return_val = veTrue;
+        RESET_FAKE(veCanRead);
+        veCanRead_fake.return_val = veTrue;
+        RESET_FAKE(pltGetCount1ms);
+        pltGetCount1ms_fake.return_val = 0;
 
         localSettingsInit();
     }
