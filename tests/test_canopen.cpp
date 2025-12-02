@@ -1,4 +1,4 @@
-#include "BaseFixture.hpp"
+#include "CanFixture.hpp"
 
 extern "C" {
 #include "canopen.h"
@@ -16,22 +16,6 @@ extern "C" {
 // vecan0       60A   [8]  40 08 10 00 00 00 00 00
 // vecan0       58A   [8]  43 08 10 00 47 65 6E 34
 
-static std::vector<VeRawCanMsg> canMsgSentLog;
-static veBool veCanSendLocal(VeRawCanMsg *message) {
-    canMsgSentLog.push_back(*message);
-    return veTrue;
-}
-
-static std::vector<VeRawCanMsg> canMsgReadQueue;
-static veBool veCanReadLocal(VeRawCanMsg *message) {
-    if (!canMsgReadQueue.empty()) {
-        memcpy(message, &canMsgReadQueue.front(), sizeof(VeRawCanMsg));
-        canMsgReadQueue.erase(canMsgReadQueue.begin());
-        return veTrue;
-    }
-    return veFalse;
-}
-
 FAKE_VOID_FUNC1(testCallback, CanOpenPendingSdoRequest *);
 FAKE_VOID_FUNC1(testErrorCallback, CanOpenPendingSdoRequest *);
 static SdoMessage sdoMessage;
@@ -39,24 +23,20 @@ static void testCallbackLocal(CanOpenPendingSdoRequest *request) {
     memcpy(&sdoMessage, &request->response, sizeof(SdoMessage));
 }
 
-class CanopenTest : public BaseFixture {
+class CanopenTest : public CanFixture {
   protected:
     void SetUp() override {
-        BaseFixture::SetUp();
-        canMsgReadQueue.clear();
-        canMsgSentLog.clear();
+        CanFixture::SetUp();
         RESET_FAKE(testCallback);
         RESET_FAKE(testErrorCallback);
 
-        veCanSend_fake.custom_fake = veCanSendLocal;
-        veCanRead_fake.custom_fake = veCanReadLocal;
         testCallback_fake.custom_fake = testCallbackLocal;
 
         canOpenInit();
     }
 
     void TearDown() override {
-        BaseFixture::TearDown();
+        CanFixture::TearDown();
 
         listDestroy(canOpenState.pendingSdoRequests);
         canOpenState.pendingSdoRequests = NULL;
@@ -70,11 +50,11 @@ TEST_F(CanopenTest, queueCallbackAsync) {
     EXPECT_NE(canOpenState.pendingSdoRequests->first, nullptr);
 
     // Unrelated messages should not trigger the callback
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x123,
          .length = 8,
          .mdata = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}});
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x580,
          .length = 8,
          .mdata = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}});
@@ -97,7 +77,7 @@ TEST_F(CanopenTest, queueCallbackAsyncMallocFailure) {
 TEST_F(CanopenTest, noRequestInQueue) {
     EXPECT_EQ(canOpenState.pendingSdoRequests->first, nullptr);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x123,
          .length = 8,
          .mdata = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}});
@@ -123,7 +103,7 @@ TEST_F(CanopenTest, readSdoAsync) {
 
     canOpenTx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x40);
@@ -135,7 +115,7 @@ TEST_F(CanopenTest, readSdoAsync) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x42, 0x18, 0x10, 0x04, 0x34, 0x12, 0x00, 0x00}});
@@ -160,7 +140,7 @@ TEST_F(CanopenTest, readSdoAsyncSendAbortOnErrorResponse) {
 
     canOpenTx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x40);
@@ -172,7 +152,7 @@ TEST_F(CanopenTest, readSdoAsyncSendAbortOnErrorResponse) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x41, 0x18, 0x10, 0x04, 0x34, 0x12, 0x00, 0x00}});
@@ -185,7 +165,7 @@ TEST_F(CanopenTest, readSdoAsyncSendAbortOnErrorResponse) {
     EXPECT_EQ(testCallback_fake.call_count, 0);
     EXPECT_EQ(testErrorCallback_fake.call_count, 0);
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x80);
@@ -207,7 +187,7 @@ TEST_F(CanopenTest, readSdoAsyncErrorCallback) {
 
     canOpenTx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x40);
@@ -219,7 +199,7 @@ TEST_F(CanopenTest, readSdoAsyncErrorCallback) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x80, 0x18, 0x10, 0x04, 0x34, 0x12, 0x00, 0x00}});
@@ -276,7 +256,7 @@ TEST_F(CanopenTest, readSegmentedSdoAsync) {
 
     canOpenTx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x40);
@@ -288,13 +268,13 @@ TEST_F(CanopenTest, readSegmentedSdoAsync) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x41, 0x08, 0x10, 0x00, 0x0E, 0x00, 0x00, 0x00}});
     canOpenRx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x60);
@@ -306,13 +286,13 @@ TEST_F(CanopenTest, readSegmentedSdoAsync) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x00, 0x47, 0x65, 0x6E, 0x34, 0x20, 0x53, 0x69}});
     canOpenRx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x70);
@@ -324,13 +304,13 @@ TEST_F(CanopenTest, readSegmentedSdoAsync) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x00, 0x6D, 0x75, 0x6C, 0x61, 0x74, 0x6F, 0x72}});
     canOpenRx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x60);
@@ -342,7 +322,7 @@ TEST_F(CanopenTest, readSegmentedSdoAsync) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x1B, 0x34, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00}});
@@ -369,7 +349,7 @@ TEST_F(CanopenTest, readSegmentedSdoAsyncExpedited) {
 
     canOpenTx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x40);
@@ -381,7 +361,7 @@ TEST_F(CanopenTest, readSegmentedSdoAsyncExpedited) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
@@ -408,7 +388,7 @@ TEST_F(CanopenTest, readSegmentedSdoAsyncErrorResponse) {
 
     canOpenTx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x40);
@@ -420,7 +400,7 @@ TEST_F(CanopenTest, readSegmentedSdoAsyncErrorResponse) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x80, 0x08, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00}});
@@ -443,7 +423,7 @@ TEST_F(CanopenTest, readSegmentedSdoAsyncMaxLength) {
 
     canOpenTx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x40);
@@ -455,13 +435,13 @@ TEST_F(CanopenTest, readSegmentedSdoAsyncMaxLength) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x41, 0x08, 0x10, 0x00, 0x0E, 0x00, 0x00, 0x00}});
     canOpenRx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x60);
@@ -473,13 +453,13 @@ TEST_F(CanopenTest, readSegmentedSdoAsyncMaxLength) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x00, 0x47, 0x65, 0x6E, 0x34, 0x20, 0x53, 0x69}});
     canOpenRx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x70);
@@ -491,13 +471,13 @@ TEST_F(CanopenTest, readSegmentedSdoAsyncMaxLength) {
     EXPECT_EQ(message.mdata[6], 0x00);
     EXPECT_EQ(message.mdata[7], 0x00);
 
-    canMsgReadQueue.push_back(
+    this->canMsgReadQueue.push_back(
         {.canId = 0x581,
          .length = 8,
          .mdata = {0x00, 0x6D, 0x75, 0x6C, 0x61, 0x74, 0x6F, 0x72}});
     canOpenRx();
 
-    message = canMsgSentLog.back();
+    message = this->canMsgSentLog.back();
     EXPECT_EQ(message.canId, 0x601);
     EXPECT_EQ(message.length, 8);
     EXPECT_EQ(message.mdata[0], 0x80);
