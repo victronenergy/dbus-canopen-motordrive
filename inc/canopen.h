@@ -46,9 +46,6 @@ typedef union {
     };
 } SdoMessage;
 
-void logRawCanMessage(const VeRawCanMsg *message);
-void logSdoMessage(const SdoMessage *message);
-
 typedef enum {
     READ_SDO,
     READ_SEGMENTED_SDO,

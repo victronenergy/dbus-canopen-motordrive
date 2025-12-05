@@ -21,7 +21,7 @@ static VeVariantUnitFmt unitRpm0Dec = {0, "RPM"};
 static VeVariantUnitFmt unitCelsius0Dec = {0, "C"};
 static VeVariantUnitFmt unitNewtonM0Dec = {0, "Nm"};
 
-void connectToDbus(Device *device) {
+static void connectToDbus(Device *device) {
     device->dbus = veDbusConnectString(veDbusGetDefaultConnectString());
     if (!device->dbus) {
         error("dbus connection failed");
@@ -29,7 +29,7 @@ void connectToDbus(Device *device) {
     }
 }
 
-void createDeviceIdentifier(Device *device) {
+static void createDeviceIdentifier(Device *device) {
     VeCanGateway *canGw;
     char canGwId[32];
     char *c;
@@ -45,7 +45,7 @@ void createDeviceIdentifier(Device *device) {
              canGwId, device->driver->name, device->serialNumber);
 }
 
-void getVrmDeviceInstance(Device *device) {
+static void getVrmDeviceInstance(Device *device) {
     device->deviceInstance =
         veDbusGetVrmDeviceInstance(device->identifier, "motordrive", 99);
     if (device->deviceInstance < 0) {
@@ -55,7 +55,7 @@ void getVrmDeviceInstance(Device *device) {
     }
 }
 
-void registerDbusServiceName(Device *device) {
+static void registerDbusServiceName(Device *device) {
     char serviceName[256];
 
     snprintf(serviceName, sizeof(serviceName),
@@ -74,7 +74,7 @@ void createDbusTree(Device *device) {
     device->root = veItemGetOrCreateUid(veValueTree(), device->identifier);
 
     veItemCreateBasic(device->root, "DeviceInstance",
-                      veVariantUn16(&v, device->deviceInstance));
+                      veVariantUn32(&v, device->deviceInstance));
     veItemCreateBasic(device->root, "ProductId",
                       veVariantUn16(&v, device->driver->productId));
     veItemCreateBasic(

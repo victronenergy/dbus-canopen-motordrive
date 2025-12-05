@@ -3,6 +3,8 @@
 obj
 mk
 build
+build-tests
+coverage
 Makefile
 velib_path.mk
 dist

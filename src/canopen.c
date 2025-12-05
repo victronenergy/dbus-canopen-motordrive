@@ -1,27 +1,23 @@
 #include <canopen.h>
 #include <logger.h>
+#include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <velib/utils/ve_timer.h>
 
-CanOpenState canOpenState;
+CanOpenState canOpenState = {
+    .pendingSdoRequests = NULL,
+};
 
-void logRawCanMessage(const VeRawCanMsg *message) {
+static void logRawCanMessage(const VeRawCanMsg *message) {
     info("canId=%X length=%d mdata=0x%02X%02X%02X%02X%02X%02X%02X%02X",
          message->canId, message->length, message->mdata[0], message->mdata[1],
          message->mdata[2], message->mdata[3], message->mdata[4],
          message->mdata[5], message->mdata[6], message->mdata[7]);
 }
 
-void logSdoMessage(const SdoMessage *message) {
-    const un8 *data = (const un8 *)&message->data;
-    info("control=%X index=%X subindex=%d data=0x%02X%02X%02X%02X",
-         message->control, message->index, message->subindex, data[0], data[1],
-         data[2], data[3]);
-}
-
-void sendRawSdoRequest(un8 nodeId, const SdoMessage *request) {
+static void sendRawSdoRequest(un8 nodeId, const SdoMessage *request) {
     VeRawCanMsg message;
     message.canId = 0x600 + nodeId;
     message.length = 8;
@@ -48,7 +44,7 @@ void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
                          void (*onError)(CanOpenPendingSdoRequest *request)) {
     CanOpenPendingSdoRequest *pendingRequest;
 
-    pendingRequest = malloc(sizeof(*pendingRequest));
+    pendingRequest = _malloc(sizeof(*pendingRequest));
     if (!pendingRequest) {
         error("Failed to allocate memory for CanOpenPendingSdoRequest");
         pltExit(5);
@@ -79,7 +75,7 @@ void canOpenQueueCallbackAsync(
     void *context, void (*callback)(CanOpenPendingSdoRequest *request)) {
     CanOpenPendingSdoRequest *pendingRequest;
 
-    pendingRequest = malloc(sizeof(*pendingRequest));
+    pendingRequest = _malloc(sizeof(*pendingRequest));
     if (!pendingRequest) {
         error("Failed to allocate memory for CanOpenPendingSdoRequest");
         pltExit(5);
@@ -109,7 +105,7 @@ void canOpenReadSegmentedSdoAsync(
     void (*onError)(CanOpenPendingSdoRequest *request)) {
     CanOpenPendingSdoRequest *pendingRequest;
 
-    pendingRequest = malloc(sizeof(*pendingRequest));
+    pendingRequest = _malloc(sizeof(*pendingRequest));
     if (!pendingRequest) {
         error("Failed to allocate memory for CanOpenPendingSdoRequest");
         pltExit(5);
@@ -139,8 +135,8 @@ void canOpenReadSegmentedSdoAsync(
 
 void canOpenInit() { canOpenState.pendingSdoRequests = listCreate(); }
 
-void handleReadSdoResponse(ListItem *item,
-                           CanOpenPendingSdoRequest *pendingRequest) {
+static void handleReadSdoResponse(ListItem *item,
+                                  CanOpenPendingSdoRequest *pendingRequest) {
     SdoMessage abort_request;
 
     listRemove(canOpenState.pendingSdoRequests, item);
@@ -160,11 +156,12 @@ void handleReadSdoResponse(ListItem *item,
         sendRawSdoRequest(pendingRequest->nodeId, &abort_request);
     }
 
-    free(pendingRequest);
+    _free(pendingRequest);
 }
 
-void handleReadSegmentedSdoResponse(ListItem *item,
-                                    CanOpenPendingSdoRequest *pendingRequest) {
+static void
+handleReadSegmentedSdoResponse(ListItem *item,
+                               CanOpenPendingSdoRequest *pendingRequest) {
     SdoMessage request;
     un8 data_length;
     un8 bytes_to_copy;
@@ -176,7 +173,7 @@ void handleReadSegmentedSdoResponse(ListItem *item,
             warning("SDO_READ_ERROR");
             listRemove(canOpenState.pendingSdoRequests, item);
             pendingRequest->onError(pendingRequest);
-            free(pendingRequest);
+            _free(pendingRequest);
             return;
         }
 
@@ -195,7 +192,7 @@ void handleReadSegmentedSdoResponse(ListItem *item,
 
             listRemove(canOpenState.pendingSdoRequests, item);
             pendingRequest->onResponse(pendingRequest);
-            free(pendingRequest);
+            _free(pendingRequest);
 
             return;
         }
@@ -231,7 +228,7 @@ void handleReadSegmentedSdoResponse(ListItem *item,
     if (pendingRequest->response.control & SDO_SEGMENT_END) {
         listRemove(canOpenState.pendingSdoRequests, item);
         pendingRequest->onResponse(pendingRequest);
-        free(pendingRequest);
+        _free(pendingRequest);
         return;
     }
 
@@ -247,7 +244,7 @@ void handleReadSegmentedSdoResponse(ListItem *item,
         warning("SDO_READ_ERROR_SEGMENT_MAX_LENGTH");
         listRemove(canOpenState.pendingSdoRequests, item);
         pendingRequest->onError(pendingRequest);
-        free(pendingRequest);
+        _free(pendingRequest);
         return;
     }
 
@@ -264,8 +261,8 @@ void handleReadSegmentedSdoResponse(ListItem *item,
     sendRawSdoRequest(pendingRequest->nodeId, &request);
 }
 
-void handleSdoResponse(ListItem *item,
-                       CanOpenPendingSdoRequest *pendingRequest) {
+static void handleSdoResponse(ListItem *item,
+                              CanOpenPendingSdoRequest *pendingRequest) {
     switch (pendingRequest->type) {
     case READ_SDO:
         handleReadSdoResponse(item, pendingRequest);
@@ -302,8 +299,8 @@ void canOpenRx() {
     }
 }
 
-void handleReadSdoRequest(ListItem *item,
-                          CanOpenPendingSdoRequest *pendingRequest) {
+static void handleReadSdoRequest(ListItem *item,
+                                 CanOpenPendingSdoRequest *pendingRequest) {
     SdoMessage request;
 
     request.control = SDO_READ_REQUEST_CONTROL;
@@ -314,8 +311,9 @@ void handleReadSdoRequest(ListItem *item,
     sendRawSdoRequest(pendingRequest->nodeId, &request);
 }
 
-void handleReadSegmentedSdoRequest(ListItem *item,
-                                   CanOpenPendingSdoRequest *pendingRequest) {
+static void
+handleReadSegmentedSdoRequest(ListItem *item,
+                              CanOpenPendingSdoRequest *pendingRequest) {
     SdoMessage request;
 
     request.control = SDO_READ_REQUEST_CONTROL;
@@ -326,15 +324,14 @@ void handleReadSegmentedSdoRequest(ListItem *item,
     sendRawSdoRequest(pendingRequest->nodeId, &request);
 }
 
-void handleQueueCallbackRequest(ListItem *item,
-                                CanOpenPendingSdoRequest *pendingRequest) {
-    if (pendingRequest->onResponse) {
-        pendingRequest->onResponse(pendingRequest);
-    }
+static void
+handleQueueCallbackRequest(ListItem *item,
+                           CanOpenPendingSdoRequest *pendingRequest) {
+    pendingRequest->onResponse(pendingRequest);
 }
 
-void handleSdoRequest(ListItem *item,
-                      CanOpenPendingSdoRequest *pendingRequest) {
+static void handleSdoRequest(ListItem *item,
+                             CanOpenPendingSdoRequest *pendingRequest) {
     switch (pendingRequest->type) {
     case READ_SDO:
         handleReadSdoRequest(item, pendingRequest);
@@ -343,6 +340,7 @@ void handleSdoRequest(ListItem *item,
         handleReadSegmentedSdoRequest(item, pendingRequest);
         break;
     case QUEUE_CALLBACK:
+    default:
         handleQueueCallbackRequest(item, pendingRequest);
         break;
     }
@@ -367,12 +365,12 @@ void canOpenTx() {
             warning("SDO_TIMEOUT");
             listRemove(canOpenState.pendingSdoRequests, iterator);
             pendingRequest->onError(pendingRequest);
-            free(pendingRequest);
+            _free(pendingRequest);
         }
 
         if (pendingRequest->type == QUEUE_CALLBACK) {
             listRemove(canOpenState.pendingSdoRequests, iterator);
-            free(pendingRequest);
+            _free(pendingRequest);
         }
     }
 }
