@@ -1,5 +1,4 @@
-#include <drivers/curtis.h>
-#include <drivers/sevcon.h>
+#include <discovery.h>
 #include <logger.h>
 #include <node.h>
 #include <servicemanager.h>
@@ -8,18 +7,6 @@
 #include <velib/platform/plt.h>
 
 static Node nodes[127];
-
-Driver *getDriverForNodeName(un8 *name, un8 length) {
-    if (length >= 4 && name[0] == 'G' && name[1] == 'e' && name[2] == 'n' &&
-        name[3] == '4') {
-        return &sevconDriver;
-    } else if (length >= 4 && name[0] == 'A' && name[1] == 'C' &&
-               name[2] == ' ' && name[3] == 'F') {
-        return &curtisDriver;
-    }
-
-    return NULL;
-}
 
 static void
 onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
@@ -46,27 +33,29 @@ onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
     free(attempt);
 }
 
-static void onConnectionError(CanOpenPendingSdoRequest *request) {
+static void onControllerSerialNumberError(CanOpenPendingSdoRequest *request) {
     ConnectionAttempt *attempt;
 
     attempt = (ConnectionAttempt *)request->context;
-
     free(attempt);
 }
 
-static void onControllerNameResponse(CanOpenPendingSdoRequest *request) {
+static void onDiscoverNodeSuccess(un8 nodeId, void *context, Driver *driver) {
     ConnectionAttempt *attempt;
 
-    attempt = (ConnectionAttempt *)request->context;
-
-    attempt->driver = getDriverForNodeName(attempt->name, attempt->length);
-    if (attempt->driver == NULL) {
-        free(attempt);
-        return; // Unsupported controller type
-    }
+    attempt = (ConnectionAttempt *)context;
+    attempt->driver = driver;
 
     canOpenReadSdoAsync(attempt->nodeId, 0x1018, 4, attempt,
-                        onControllerSerialNumberResponse, onConnectionError);
+                        onControllerSerialNumberResponse,
+                        onControllerSerialNumberError);
+}
+
+static void onDiscoverNodeError(un8 nodeId, void *context) {
+    ConnectionAttempt *attempt;
+
+    attempt = (ConnectionAttempt *)context;
+    free(attempt);
 }
 
 void connectToNode(un8 nodeId) {
@@ -82,9 +71,8 @@ void connectToNode(un8 nodeId) {
     attempt->length = 0;
     attempt->driver = NULL;
 
-    canOpenReadSegmentedSdoAsync(nodeId, 0x1008, 0, (void *)attempt,
-                                 attempt->name, &attempt->length, 255,
-                                 onControllerNameResponse, onConnectionError);
+    discoverNode(nodeId, onDiscoverNodeSuccess, onDiscoverNodeError,
+                 (void *)attempt);
 }
 
 void disconnectFromNode(un8 nodeId) {

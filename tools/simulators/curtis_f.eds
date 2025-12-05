@@ -1,0 +1,133 @@
+[FileInfo]
+FileName=curtis_f.eds
+FileVersion=1.0
+FileRevision=1
+EDSVersion=4.0
+Description=EDS file for Curtis F Simulator Node
+
+[DeviceInfo]
+VendorName=Curtis F Simulator
+VendorNumber=1
+ProductName=Curtis F Simulator
+ProductNumber=1000
+RevisionNumber=1
+OrderCode=CURTIS-F-SIM
+BaudRate_10=0
+BaudRate_20=0
+BaudRate_50=0
+BaudRate_125=1
+BaudRate_250=1
+BaudRate_500=1
+BaudRate_800=0
+BaudRate_1000=1
+SimpleBootUpMaster=0
+SimpleBootUpSlave=1
+Granularity=8
+DynamicChannelsSupported=0
+GroupMessaging=0
+NrOfRXPDO=4
+NrOfTXPDO=4
+LSS_Supported=0
+
+[MandatoryObjects]
+SupportedObjects=3
+1=0x1000
+2=0x1001
+3=0x1018
+
+[1000]
+ParameterName=Device Type
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
+PDOMapping=0
+
+[1001]
+ParameterName=Error Register
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=0
+PDOMapping=0
+
+[1008]
+ParameterName=Device Name
+ObjectType=0x7
+DataType=0x0009
+AccessType=ro
+DefaultValue="AC F Simulator"
+
+[1018]
+ParameterName=Identity Object
+ObjectType=0x9
+
+[1018sub1]
+ParameterName=Vendor ID
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=1
+PDOMapping=0
+
+[1018sub4]
+ParameterName=Serial Number
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
+
+[3000]
+ParameterName=Controller Temperature
+ObjectType=0x7
+DataType=0x0006
+AccessType=ro
+DefaultValue=36
+
+[338F]
+ParameterName=Battery Current
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=400
+PDOMapping=1
+Unit=0.01A per unit
+
+[34C1]
+ParameterName=Battery Voltage
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=800
+PDOMapping=1
+Unit=0.01V per unit
+
+[352F]
+ParameterName=Motor Speed
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=200
+PDOMapping=1
+Unit=rpm
+
+[3536]
+ParameterName=Motor Temperature
+ObjectType=0x7
+DataType=0x0006
+AccessType=ro
+DefaultValue=0
+
+[3538]
+ParameterName=Motor Torque
+ObjectType=0x7
+DataType=0x0006
+AccessType=ro
+DefaultValue=0
+
+[362F]
+ParameterName=Swap
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
