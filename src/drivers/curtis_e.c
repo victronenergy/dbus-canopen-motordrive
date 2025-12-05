@@ -7,6 +7,8 @@
 #include <string.h>
 #include <velib/vecan/products.h>
 
+#define RPM_DEADBAND 3
+
 // @todo: this isn't going to work with more than one node using this driver
 static int swapMotorDirection = -1; // cache for Swap_Motor_Direction
 
@@ -66,6 +68,9 @@ static void onMotorRpmResponse(CanOpenPendingSdoRequest *request) {
     rpm = request->response.data;
     if (swapMotorDirection == 1) { // Throttle is reversed
         rpm *= -1;
+    }
+    if (rpm > -RPM_DEADBAND && rpm < RPM_DEADBAND) {
+        rpm = 0;
     }
 
     veItemOwnerSet(node->device->motorRpm, veVariantUn16(&v, abs(rpm)));
