@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import canopen
 import time
 import threading
@@ -44,8 +45,8 @@ def temperature_to_curtis_temperature(temperature):
     return int(temperature * 10)  # in 0.1°C
 
 
-def create_curtis_f_node():
-    node = canopen.LocalNode(node_id, "./curtis_f.eds")
+def create_curtis_f_node(id):
+    node = canopen.LocalNode(id, "./curtis_f.eds")
 
     node.sdo["Device Name"].raw = "AC F Simulator"
     node.sdo["Identity Object"]["Serial Number"].raw = serial_number
@@ -83,7 +84,6 @@ def simulate_curtis_f_data(node, update_interval=0.125):
         )
         time.sleep(update_interval)
 
-
 def main(argv):
     parser = argparse.ArgumentParser(prog="ProgramName")
     parser.add_argument(
@@ -96,13 +96,16 @@ def main(argv):
     parser.add_argument(
         "--channel", "-c", default="vcan0", help="Channel/interface to connect to"
     )
+    parser.add_argument(
+        "--node", "-n", type=lambda x: int(x, 0), default=node_id, help="Node ID"
+    )
 
     args = parser.parse_args(argv)
 
     network = canopen.Network()
     network.connect(channel=args.channel, interface=args.bus, baudrate=250000)
 
-    curtis_f_node = create_curtis_f_node()
+    curtis_f_node = create_curtis_f_node(args.node)
     network.add_node(curtis_f_node)
     simulation_thread = threading.Thread(
         target=simulate_curtis_f_data, args=(curtis_f_node,), daemon=True
@@ -119,4 +122,5 @@ def main(argv):
         network.disconnect()
 
 
-main("")
+if __name__ == "__main__":
+    main(sys.argv[1:])

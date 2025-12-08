@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import canopen
 import time
 import threading
@@ -43,8 +44,8 @@ def temperature_to_curtis_temperature(temperature):
     return int(temperature * 10)  # in 0.1°C
 
 
-def create_curtis_e_node():
-    node = canopen.LocalNode(node_id, "./curtis_e.eds")
+def create_curtis_e_node(id):
+    node = canopen.LocalNode(id, "./curtis_e.eds")
 
     node.sdo["Identity Object"]["Serial Number"].raw = serial_number
     node.sdo["Identity Object"]["Vendor ID"].raw = CURTIS_INSTRUMENTS_VENDOR_ID
@@ -93,13 +94,16 @@ def main(argv):
     parser.add_argument(
         "--channel", "-c", default="vcan0", help="Channel/interface to connect to"
     )
+    parser.add_argument(
+        "--node", "-n", type=lambda x: int(x, 0), default=node_id, help="Node ID"
+    )
 
     args = parser.parse_args(argv)
 
     network = canopen.Network()
     network.connect(channel=args.channel, interface=args.bus, baudrate=250000)
 
-    curtis_e_node = create_curtis_e_node()
+    curtis_e_node = create_curtis_e_node(args.node)
     network.add_node(curtis_e_node)
     simulation_thread = threading.Thread(
         target=simulate_curtis_e_data, args=(curtis_e_node,), daemon=True
@@ -116,4 +120,5 @@ def main(argv):
         network.disconnect()
 
 
-main("")
+if __name__ == "__main__":
+    main(sys.argv[1:])

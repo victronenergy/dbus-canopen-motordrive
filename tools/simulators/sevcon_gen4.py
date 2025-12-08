@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import canopen
 import time
 import threading
@@ -42,8 +43,8 @@ def temperature_to_sevcon_temperature(temperature):
     return int(temperature)
 
 
-def create_sevcon_node():
-    node = canopen.LocalNode(node_id, "./sevcon_gen4.eds")
+def create_sevcon_node(id):
+    node = canopen.LocalNode(id, "./sevcon_gen4.eds")
 
     node.sdo["Device Name"].raw = "Gen4 Simulator"
     node.sdo["Identity Object"]["Serial Number"].raw = serial_number
@@ -98,13 +99,16 @@ def main(argv):
     parser.add_argument(
         "--channel", "-c", default="vcan0", help="Channel/interface to connect to"
     )
+    parser.add_argument(
+        "--node", "-n", type=lambda x: int(x, 0), default=node_id, help="Node ID"
+    )
 
     args = parser.parse_args(argv)
 
     network = canopen.Network()
     network.connect(channel=args.channel, interface=args.bus, baudrate=250000)
 
-    sevcon_node = create_sevcon_node()
+    sevcon_node = create_sevcon_node(args.node)
     network.add_node(sevcon_node)
     simulation_thread = threading.Thread(
         target=simulate_sevcon_data, args=(sevcon_node,), daemon=True
@@ -121,4 +125,5 @@ def main(argv):
         network.disconnect()
 
 
-main("")
+if __name__ == "__main__":
+    main(sys.argv[1:])
