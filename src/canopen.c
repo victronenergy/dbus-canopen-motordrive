@@ -320,6 +320,7 @@ handleReadSegmentedSdoRequest(ListItem *item,
     request.index = pendingRequest->index;
     request.subindex = pendingRequest->subindex;
     request.data = 0;
+    *pendingRequest->segmented_length = 0;
 
     sendRawSdoRequest(pendingRequest->nodeId, &request);
 }

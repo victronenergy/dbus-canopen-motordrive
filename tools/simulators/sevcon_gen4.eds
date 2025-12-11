@@ -1,0 +1,177 @@
+[FileInfo]
+FileName=sevcon_gen4.eds
+FileVersion=1.0
+FileRevision=1
+EDSVersion=4.0
+Description=EDS file for Sevcon Gen4 Simulator Node
+
+[DeviceInfo]
+VendorName=Gen4 Simulator
+VendorNumber=1
+ProductName=Gen4 Simulator
+ProductNumber=1000
+RevisionNumber=1
+OrderCode=GEN4-SIM
+BaudRate_10=0
+BaudRate_20=0
+BaudRate_50=0
+BaudRate_125=1
+BaudRate_250=1
+BaudRate_500=1
+BaudRate_800=0
+BaudRate_1000=1
+SimpleBootUpMaster=0
+SimpleBootUpSlave=1
+Granularity=8
+DynamicChannelsSupported=0
+GroupMessaging=0
+NrOfRXPDO=4
+NrOfTXPDO=4
+LSS_Supported=0
+
+[MandatoryObjects]
+SupportedObjects=3
+1=0x1000
+2=0x1001
+3=0x1018
+
+[1000]
+ParameterName=Device Type
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
+PDOMapping=0
+
+[1001]
+ParameterName=Error Register
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=0
+PDOMapping=0
+
+[1018]
+ParameterName=Identity Object
+ObjectType=0x9
+SubNumber=4
+1_Sub0=4
+1_Sub1=Vendor ID
+1_Sub2=Product Code
+1_Sub3=Revision Number
+1_Sub4=Serial Number
+
+[1018sub1]
+ParameterName=Vendor ID
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=1
+PDOMapping=0
+
+[1018sub2]
+ParameterName=Product Code
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=1000
+PDOMapping=0
+
+[1018sub3]
+ParameterName=Revision Number
+ObjectType=0x7
+DataType=0x0006
+AccessType=ro
+DefaultValue=1
+PDOMapping=0
+
+[1018sub4]
+ParameterName=Serial Number
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
+PDOMapping=0
+
+[1008]
+ParameterName=Device Name
+ObjectType=0x7
+DataType=0x0009
+AccessType=ro
+DefaultValue="Gen4 Simulator"
+PDOMapping=0
+
+[4600]
+ParameterName=Motor Temperature
+ObjectType=0x8
+SubNumber=1
+1_Sub0=1
+1_Sub1=Temperature
+
+[4600sub1]
+ParameterName=Temperature
+ObjectType=0x7
+DataType=0x0006
+AccessType=ro
+DefaultValue=42
+PDOMapping=1
+
+[4602]
+ParameterName=Motor Torque
+ObjectType=0x8
+SubNumber=1
+1_Sub0=1
+1_SubC=Torque
+
+[4602subC]
+ParameterName=Torque
+ObjectType=0x7
+DataType=0x0006
+AccessType=ro
+DefaultValue=80
+PDOMapping=1
+
+[5100]
+ParameterName=Battery and Controller Data
+ObjectType=0x8
+SubNumber=4
+1_Sub0=4
+1_Sub1=Battery Voltage
+1_Sub2=Battery Current
+1_Sub3=Motor Temperature Ref
+1_Sub4=Controller Temperature
+
+[5100sub1]
+ParameterName=Battery Voltage
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=800
+PDOMapping=1
+Unit=0.0625V per unit
+
+[5100sub2]
+ParameterName=Battery Current
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=400
+PDOMapping=1
+Unit=0.0625A per unit
+
+[5100sub4]
+ParameterName=Controller Temperature
+ObjectType=0x7
+DataType=0x0006
+AccessType=ro
+DefaultValue=36
+PDOMapping=1
+
+[606C]
+ParameterName=Motor Speed
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=200
+PDOMapping=1
+Unit=rpm

@@ -148,4 +148,6 @@ Driver sevconDriver = {
     .productId = VE_PROD_ID_SEVCON_MOTORDRIVE,
     .readRoutine = readRoutine,
     .fastReadRoutine = fastReadRoutine,
+    .createDriverContext = NULL,
+    .destroyDriverContext = NULL,
 };
