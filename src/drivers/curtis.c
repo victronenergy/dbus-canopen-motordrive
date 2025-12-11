@@ -165,4 +165,6 @@ Driver curtisDriver = {
     .productId = VE_PROD_ID_CURTIS_MOTORDRIVE,
     .readRoutine = readRoutine,
     .fastReadRoutine = fastReadRoutine,
+    .createDriverContext = NULL,
+    .destroyDriverContext = NULL,
 };

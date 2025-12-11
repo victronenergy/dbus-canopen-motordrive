@@ -30,6 +30,10 @@ onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
     }
 
     node->connected = veTrue;
+    if (node->device->driver->createDriverContext != NULL) {
+        node->device->driverContext =
+            node->device->driver->createDriverContext(node);
+    }
     free(attempt);
 }
 
@@ -83,6 +87,10 @@ void disconnectFromNode(un8 nodeId) {
         return;
     }
     destroyDevice(node->device);
+    if (node->device->driver->destroyDriverContext != NULL) {
+        node->device->driver->destroyDriverContext(node,
+                                                   node->device->driverContext);
+    }
     free(node->device);
     node->device = NULL;
     node->connected = veFalse;

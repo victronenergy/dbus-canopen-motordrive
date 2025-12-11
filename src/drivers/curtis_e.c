@@ -1,19 +1,27 @@
 #include <canopen.h>
 #include <drivers/curtis_e.h>
 #include <localsettings.h>
+#include <logger.h>
 #include <node.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <velib/platform/plt.h>
 #include <velib/vecan/products.h>
 
 #define RPM_DEADBAND 3
 
-// @todo: this isn't going to work with more than one node using this driver
-static int swapMotorDirection = -1; // cache for Swap_Motor_Direction
-
 static void onSwapMotorDirectionResponse(CanOpenPendingSdoRequest *request) {
-    swapMotorDirection = request->response.data & 0b1000;
+    Node *node;
+    CurtisEContext *context;
+
+    node = (Node *)request->context;
+    if (!node->connected) {
+        return;
+    }
+
+    context = (CurtisEContext *)node->device->driverContext;
+    context->swapMotorDirection = request->response.data & 0b1000;
 }
 
 static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
@@ -34,9 +42,24 @@ static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
                    veVariantSn32(&v, (sn32)voltage * v.value.Float));
 }
 
+static void onModulationDepthResponse(CanOpenPendingSdoRequest *request) {
+    Node *node;
+    CurtisEContext *context;
+
+    node = (Node *)request->context;
+    if (!node->connected) {
+        return;
+    }
+
+    context = (CurtisEContext *)node->device->driverContext;
+    context->modulationDepth = ((un16)request->response.data) / 1182.0F;
+}
+
 static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
     VeVariant v;
     Node *node;
+    CurtisEContext *context;
+    float current_rms;
     float current;
 
     node = (Node *)request->context;
@@ -44,8 +67,18 @@ static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
         return;
     }
 
-    current = ((sn16)request->response.data) * 0.1F;
+    context = (CurtisEContext *)node->device->driverContext;
 
+    current_rms = ((sn16)request->response.data) * 0.1F;
+
+    veItemLocalValue(node->device->voltage, &v);
+    if (v.value.Float == 0.0F) {
+        return;
+    }
+
+    // @todo: include power factor
+    current = (context->modulationDepth * (v.value.Float / sqrt(2))) *
+              current_rms / v.value.Float;
     veItemOwnerSet(node->device->current, veVariantFloat(&v, current));
 
     veItemLocalValue(node->device->voltage, &v);
@@ -59,14 +92,17 @@ static void onMotorRpmResponse(CanOpenPendingSdoRequest *request) {
     sn16 rpm;
     un8 motorDirection;
     veBool motorDirectionInverted;
+    CurtisEContext *context;
 
     node = (Node *)request->context;
     if (!node->connected) {
         return;
     }
 
+    context = (CurtisEContext *)node->device->driverContext;
+
     rpm = request->response.data;
-    if (swapMotorDirection == 1) { // Throttle is reversed
+    if (context->swapMotorDirection == 1) { // Throttle is reversed
         rpm *= -1;
     }
     if (rpm > -RPM_DEADBAND && rpm < RPM_DEADBAND) {
@@ -127,12 +163,17 @@ static void onError(CanOpenPendingSdoRequest *request) {
 }
 
 static void readRoutine(Node *node) {
-    if (swapMotorDirection == -1) {
+    CurtisEContext *context;
+
+    context = (CurtisEContext *)node->device->driverContext;
+    if (context->swapMotorDirection == -1) {
         canOpenReadSdoAsync(node->device->nodeId, 0x306C, 0, node,
                             onSwapMotorDirectionResponse, onError);
     }
     canOpenReadSdoAsync(node->device->nodeId, 0x324C, 0, node,
                         onBatteryVoltageResponse, onError);
+    canOpenReadSdoAsync(node->device->nodeId, 0x3208, 0, node,
+                        onModulationDepthResponse, onError);
     canOpenReadSdoAsync(node->device->nodeId, 0x3209, 0, node,
                         onBatteryCurrentResponse, onError);
     canOpenReadSdoAsync(node->device->nodeId, 0x3207, 0, node,
@@ -148,9 +189,28 @@ static void fastReadRoutine(Node *node) {
                         onMotorRpmResponse, onError);
 }
 
+static void *createDriverContext(Node *node) {
+    CurtisEContext *context;
+
+    context = malloc(sizeof(*context));
+    if (!context) {
+        error("malloc failed for CurtisEContext");
+        pltExit(5);
+    }
+
+    context->swapMotorDirection = -1;
+    context->modulationDepth = 0.0F;
+
+    return (void *)context;
+}
+
+static void destroyDriverContext(Node *node, void *context) { free(context); }
+
 Driver curtisEDriver = {
     .name = "curtis_e",
     .productId = VE_PROD_ID_CURTIS_MOTORDRIVE,
     .readRoutine = readRoutine,
     .fastReadRoutine = fastReadRoutine,
+    .createDriverContext = createDriverContext,
+    .destroyDriverContext = destroyDriverContext,
 };

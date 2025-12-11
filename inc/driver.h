@@ -11,6 +11,8 @@ typedef struct _Driver {
     un16 productId;
     void (*readRoutine)(Node *node);
     void (*fastReadRoutine)(Node *node);
+    void *(*createDriverContext)(Node *node);
+    void (*destroyDriverContext)(Node *node, void *context);
 } Driver;
 
 #endif
