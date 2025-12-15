@@ -37,7 +37,7 @@ onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
     free(attempt);
 }
 
-static void onControllerSerialNumberError(CanOpenPendingSdoRequest *request) {
+static void onControllerSerialNumberError(CanOpenPendingSdoRequest *request, CanOpenError error) {
     ConnectionAttempt *attempt;
 
     attempt = (ConnectionAttempt *)request->context;

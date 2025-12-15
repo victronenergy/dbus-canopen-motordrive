@@ -41,7 +41,7 @@ static void sendRawSdoRequest(un8 nodeId, const SdoMessage *request) {
 
 void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
                          void (*onResponse)(CanOpenPendingSdoRequest *request),
-                         void (*onError)(CanOpenPendingSdoRequest *request)) {
+                         void (*onError)(CanOpenPendingSdoRequest *request, CanOpenError error)) {
     CanOpenPendingSdoRequest *pendingRequest;
 
     pendingRequest = _malloc(sizeof(*pendingRequest));
@@ -102,7 +102,7 @@ void canOpenReadSegmentedSdoAsync(
     un8 nodeId, un16 index, un8 subindex, void *context, un8 *buffer,
     un8 *length, un8 max_length,
     void (*onResponse)(CanOpenPendingSdoRequest *request),
-    void (*onError)(CanOpenPendingSdoRequest *request)) {
+    void (*onError)(CanOpenPendingSdoRequest *request, CanOpenError error)) {
     CanOpenPendingSdoRequest *pendingRequest;
 
     pendingRequest = _malloc(sizeof(*pendingRequest));
@@ -144,7 +144,7 @@ static void handleReadSdoResponse(ListItem *item,
     if ((pendingRequest->response.control & SDO_COMMAND_MASK) !=
         SDO_READ_RESPONSE_CONTROL) {
         warning("SDO_READ_ERROR");
-        pendingRequest->onError(pendingRequest);
+        pendingRequest->onError(pendingRequest, SDO_READ_ERROR);
     } else if (pendingRequest->response.control & SDO_EXPEDITED) {
         pendingRequest->onResponse(pendingRequest);
     } else {
@@ -172,7 +172,7 @@ handleReadSegmentedSdoResponse(ListItem *item,
             SDO_READ_RESPONSE_CONTROL) {
             warning("SDO_READ_ERROR");
             listRemove(canOpenState.pendingSdoRequests, item);
-            pendingRequest->onError(pendingRequest);
+            pendingRequest->onError(pendingRequest, SDO_READ_ERROR);
             _free(pendingRequest);
             return;
         }
@@ -243,7 +243,7 @@ handleReadSegmentedSdoResponse(ListItem *item,
 
         warning("SDO_READ_ERROR_SEGMENT_MAX_LENGTH");
         listRemove(canOpenState.pendingSdoRequests, item);
-        pendingRequest->onError(pendingRequest);
+        pendingRequest->onError(pendingRequest, SDO_READ_ERROR_SEGMENT_MAX_LENGTH);
         _free(pendingRequest);
         return;
     }
@@ -365,7 +365,7 @@ void canOpenTx() {
         if (veTick1ms(&pendingRequest->timeout, 50)) {
             warning("SDO_TIMEOUT");
             listRemove(canOpenState.pendingSdoRequests, iterator);
-            pendingRequest->onError(pendingRequest);
+            pendingRequest->onError(pendingRequest, SDO_READ_ERROR_TIMEOUT);
             _free(pendingRequest);
         }
 

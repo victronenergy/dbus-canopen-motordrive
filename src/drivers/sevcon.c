@@ -112,7 +112,7 @@ static void onControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
                    veVariantUn16(&v, request->response.data));
 }
 
-static void onError(CanOpenPendingSdoRequest *request) {
+static void onError(CanOpenPendingSdoRequest *request, CanOpenError error) {
     Node *node;
 
     node = (Node *)request->context;

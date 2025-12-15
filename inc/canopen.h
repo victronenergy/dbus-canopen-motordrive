@@ -20,12 +20,6 @@
 #define SDO_SEGMENT_UNUSED_MASK 0b00001110
 #define SDO_SEGMENT_END 0b00000001
 #define SDO_ERROR_TIMEOUT 0x0a
-#define SDO_READ_ERROR 0x02
-#define SDO_READ_ERROR_TIMEOUT 0x03
-#define SDO_READ_ERROR_SEGMENT_TRANSFER 0x04
-#define SDO_READ_ERROR_SEGMENT_MISMATCH 0x05
-#define SDO_READ_ERROR_SEGMENT_MAX_LENGTH 0x06
-#define SDO_WRITE_ERROR 0x08
 
 #define MAX_SDO_SEND_TRIES 3
 
@@ -57,6 +51,15 @@ typedef enum {
     SENT,
 } CanOpenSdoRequestState;
 
+typedef enum {
+    SDO_READ_ERROR,
+    SDO_READ_ERROR_TIMEOUT,
+    SDO_READ_ERROR_SEGMENT_TRANSFER,
+    SDO_READ_ERROR_SEGMENT_MISMATCH,
+    SDO_READ_ERROR_SEGMENT_MAX_LENGTH,
+    SDO_WRITE_ERROR,
+} CanOpenError;
+
 typedef struct _CanOpenPendingSdoRequest CanOpenPendingSdoRequest;
 
 typedef struct _CanOpenPendingSdoRequest {
@@ -67,7 +70,7 @@ typedef struct _CanOpenPendingSdoRequest {
     un8 subindex;
     SdoMessage response;
     void (*onResponse)(CanOpenPendingSdoRequest *request);
-    void (*onError)(CanOpenPendingSdoRequest *request);
+    void (*onError)(CanOpenPendingSdoRequest *request, CanOpenError error);
     un16 timeout;
 
     void *context;
@@ -83,13 +86,13 @@ void canOpenTx();
 
 void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
                          void (*onResponse)(CanOpenPendingSdoRequest *request),
-                         void (*onError)(CanOpenPendingSdoRequest *request));
+                         void (*onError)(CanOpenPendingSdoRequest *request, CanOpenError error));
 
 void canOpenReadSegmentedSdoAsync(
     un8 nodeId, un16 index, un8 subindex, void *context, un8 *buffer,
     un8 *length, un8 max_length,
     void (*onResponse)(CanOpenPendingSdoRequest *request),
-    void (*onError)(CanOpenPendingSdoRequest *request));
+    void (*onError)(CanOpenPendingSdoRequest *request, CanOpenError error));
 
 void canOpenQueueCallbackAsync(
     void *context, void (*callback)(CanOpenPendingSdoRequest *request));

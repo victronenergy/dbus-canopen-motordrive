@@ -17,7 +17,7 @@ extern "C" {
 // vecan0       58A   [8]  43 08 10 00 47 65 6E 34
 
 FAKE_VOID_FUNC1(testCallback, CanOpenPendingSdoRequest *);
-FAKE_VOID_FUNC1(testErrorCallback, CanOpenPendingSdoRequest *);
+FAKE_VOID_FUNC2(testErrorCallback, CanOpenPendingSdoRequest *, CanOpenError);
 static SdoMessage sdoMessage;
 static void testCallbackLocal(CanOpenPendingSdoRequest *request) {
     memcpy(&sdoMessage, &request->response, sizeof(SdoMessage));

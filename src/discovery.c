@@ -1,7 +1,7 @@
 #include <canopen.h>
 #include <discovery.h>
-#include <drivers/curtis.h>
 #include <drivers/curtis_e.h>
+#include <drivers/curtis_f.h>
 #include <drivers/sevcon.h>
 #include <logger.h>
 #include <memory.h>
@@ -16,7 +16,7 @@ static Driver *getDriverForNodeName(un8 *name, un8 length) {
         return &sevconDriver;
     } else if (length >= 4 && name[0] == 'A' && name[1] == 'C' &&
                name[2] == ' ' && name[3] == 'F') {
-        return &curtisDriver;
+        return &curtisFDriver;
     }
     // Curtis 123X SE/E controllers do not support SDO 0x1008
 
@@ -46,7 +46,7 @@ static void onCurtisModelNumberResponse(CanOpenPendingSdoRequest *request) {
     }
 }
 
-static void onCurtisModelNumberError(CanOpenPendingSdoRequest *request) {
+static void onCurtisModelNumberError(CanOpenPendingSdoRequest *request, CanOpenError error) {
     onError((DiscoveryContext *)request->context);
 }
 
@@ -60,7 +60,7 @@ static void onVendorIdResponse(CanOpenPendingSdoRequest *request) {
     }
 }
 
-static void onVendorIdError(CanOpenPendingSdoRequest *request) {
+static void onVendorIdError(CanOpenPendingSdoRequest *request, CanOpenError error) {
     onError((DiscoveryContext *)request->context);
 }
 
@@ -77,11 +77,15 @@ static void onProductNameSuccess(CanOpenPendingSdoRequest *request) {
     }
 }
 
-static void onProductNameError(CanOpenPendingSdoRequest *request) {
+static void onProductNameError(CanOpenPendingSdoRequest *request, CanOpenError error) {
     // Some controllers do not support reading the product name. (e.g. Curtis
     // 123X SE/E). Falling back to reading the vendor ID.
-    canOpenReadSdoAsync(request->nodeId, 0x1018, 1, request->context,
-                        onVendorIdResponse, onVendorIdError);
+    if (error != SDO_READ_ERROR_TIMEOUT) {
+        canOpenReadSdoAsync(request->nodeId, 0x1018, 1, request->context,
+                            onVendorIdResponse, onVendorIdError);
+    } else {
+        onError((DiscoveryContext *)request->context);
+    }
 }
 
 void discoverNode(un8 nodeId, DiscoverNodeSuccessCallback onSuccess,
