@@ -92,7 +92,7 @@ DefaultValue=800
 PDOMapping=1
 Unit=0.015625V per unit
 
-[3209]
+[359E]
 ParameterName=Battery Current
 ObjectType=0x7
 DataType=0x0003

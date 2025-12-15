@@ -3,13 +3,13 @@
 #include <localsettings.h>
 #include <logger.h>
 #include <node.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <velib/platform/plt.h>
 #include <velib/vecan/products.h>
 
 #define RPM_DEADBAND 3
+#define CURRENT_DEADBAND 0.1F
 
 static void onSwapMotorDirectionResponse(CanOpenPendingSdoRequest *request) {
     Node *node;
@@ -42,24 +42,9 @@ static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
                    veVariantSn32(&v, (sn32)voltage * v.value.Float));
 }
 
-static void onModulationDepthResponse(CanOpenPendingSdoRequest *request) {
-    Node *node;
-    CurtisEContext *context;
-
-    node = (Node *)request->context;
-    if (!node->connected) {
-        return;
-    }
-
-    context = (CurtisEContext *)node->device->driverContext;
-    context->modulationDepth = ((un16)request->response.data) / 1182.0F;
-}
-
 static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
     VeVariant v;
     Node *node;
-    CurtisEContext *context;
-    float current_rms;
     float current;
 
     node = (Node *)request->context;
@@ -67,20 +52,12 @@ static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
         return;
     }
 
-    context = (CurtisEContext *)node->device->driverContext;
-
-    current_rms = ((sn16)request->response.data) * 0.1F;
-
-    veItemLocalValue(node->device->voltage, &v);
-    if (v.value.Float == 0.0F) {
-        return;
+    current = ((sn16)request->response.data) * 0.1F;
+    if (current >= -CURRENT_DEADBAND && current <= CURRENT_DEADBAND) {
+        current = 0.0F;
     }
 
-    // @todo: include power factor
-    current = (context->modulationDepth * (v.value.Float / sqrt(2))) *
-              current_rms / v.value.Float;
     veItemOwnerSet(node->device->current, veVariantFloat(&v, current));
-
     veItemLocalValue(node->device->voltage, &v);
     veItemOwnerSet(node->device->power,
                    veVariantSn32(&v, (sn32)v.value.Float * current));
@@ -151,7 +128,7 @@ static void onControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
                    veVariantFloat(&v, ((sn16)request->response.data) * 0.1F));
 }
 
-static void onError(CanOpenPendingSdoRequest *request) {
+static void onError(CanOpenPendingSdoRequest *request, CanOpenError error) {
     Node *node;
 
     node = (Node *)request->context;
@@ -172,9 +149,7 @@ static void readRoutine(Node *node) {
     }
     canOpenReadSdoAsync(node->device->nodeId, 0x324C, 0, node,
                         onBatteryVoltageResponse, onError);
-    canOpenReadSdoAsync(node->device->nodeId, 0x3208, 0, node,
-                        onModulationDepthResponse, onError);
-    canOpenReadSdoAsync(node->device->nodeId, 0x3209, 0, node,
+    canOpenReadSdoAsync(node->device->nodeId, 0x359E, 0, node,
                         onBatteryCurrentResponse, onError);
     canOpenReadSdoAsync(node->device->nodeId, 0x3207, 0, node,
                         onMotorRpmResponse, onError);
@@ -199,7 +174,6 @@ static void *createDriverContext(Node *node) {
     }
 
     context->swapMotorDirection = -1;
-    context->modulationDepth = 0.0F;
 
     return (void *)context;
 }
