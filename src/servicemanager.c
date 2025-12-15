@@ -60,7 +60,7 @@ static void updateScanProgress() {
     }
 }
 
-void scanBus() {
+static void scanBus() {
     VeVariant v;
 
     scanNodeId = 1;

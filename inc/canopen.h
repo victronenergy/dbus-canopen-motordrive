@@ -86,7 +86,8 @@ void canOpenTx();
 
 void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
                          void (*onResponse)(CanOpenPendingSdoRequest *request),
-                         void (*onError)(CanOpenPendingSdoRequest *request, CanOpenError error));
+                         void (*onError)(CanOpenPendingSdoRequest *request,
+                                         CanOpenError error));
 
 void canOpenReadSegmentedSdoAsync(
     un8 nodeId, un16 index, un8 subindex, void *context, un8 *buffer,

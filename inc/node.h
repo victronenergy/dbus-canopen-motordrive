@@ -26,4 +26,6 @@ void readFromConnectedNodes(veBool fast);
 void nodesTick();
 void nodesInit();
 
+extern Node nodes[127];
+
 #endif

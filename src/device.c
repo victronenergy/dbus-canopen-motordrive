@@ -127,7 +127,7 @@ void createDbusTree(Device *device) {
     veDbusItemInit(device->dbus, device->root);
 }
 
-veBool createDevice(Device *device, un8 nodeId, un32 serialNumber) {
+void createDevice(Device *device, un8 nodeId, un32 serialNumber) {
     device->nodeId = nodeId;
     device->serialNumber = serialNumber;
 
@@ -136,8 +136,6 @@ veBool createDevice(Device *device, un8 nodeId, un32 serialNumber) {
     getVrmDeviceInstance(device);
     createDbusTree(device);
     registerDbusServiceName(device);
-
-    return veFalse;
 }
 
 void destroyDevice(Device *device) {

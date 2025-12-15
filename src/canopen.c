@@ -41,7 +41,8 @@ static void sendRawSdoRequest(un8 nodeId, const SdoMessage *request) {
 
 void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
                          void (*onResponse)(CanOpenPendingSdoRequest *request),
-                         void (*onError)(CanOpenPendingSdoRequest *request, CanOpenError error)) {
+                         void (*onError)(CanOpenPendingSdoRequest *request,
+                                         CanOpenError error)) {
     CanOpenPendingSdoRequest *pendingRequest;
 
     pendingRequest = _malloc(sizeof(*pendingRequest));
@@ -243,7 +244,8 @@ handleReadSegmentedSdoResponse(ListItem *item,
 
         warning("SDO_READ_ERROR_SEGMENT_MAX_LENGTH");
         listRemove(canOpenState.pendingSdoRequests, item);
-        pendingRequest->onError(pendingRequest, SDO_READ_ERROR_SEGMENT_MAX_LENGTH);
+        pendingRequest->onError(pendingRequest,
+                                SDO_READ_ERROR_SEGMENT_MAX_LENGTH);
         _free(pendingRequest);
         return;
     }

@@ -5,17 +5,16 @@
 #include <drivers/sevcon.h>
 #include <logger.h>
 #include <memory.h>
+#include <string.h>
 #include <velib/platform/plt.h>
 
 static un8 name[255];
 static un8 length;
 
-static Driver *getDriverForNodeName(un8 *name, un8 length) {
-    if (length >= 4 && name[0] == 'G' && name[1] == 'e' && name[2] == 'n' &&
-        name[3] == '4') {
+static Driver *getDriverForNodeName(const char *name, un8 length) {
+    if (length >= 4 && strncmp(name, "Gen4", 4) == 0) {
         return &sevconDriver;
-    } else if (length >= 4 && name[0] == 'A' && name[1] == 'C' &&
-               name[2] == ' ' && name[3] == 'F') {
+    } else if (length >= 4 && strncmp(name, "AC F", 4) == 0) {
         return &curtisFDriver;
     }
     // Curtis 123X SE/E controllers do not support SDO 0x1008
@@ -46,7 +45,8 @@ static void onCurtisModelNumberResponse(CanOpenPendingSdoRequest *request) {
     }
 }
 
-static void onCurtisModelNumberError(CanOpenPendingSdoRequest *request, CanOpenError error) {
+static void onCurtisModelNumberError(CanOpenPendingSdoRequest *request,
+                                     CanOpenError error) {
     onError((DiscoveryContext *)request->context);
 }
 
@@ -60,7 +60,8 @@ static void onVendorIdResponse(CanOpenPendingSdoRequest *request) {
     }
 }
 
-static void onVendorIdError(CanOpenPendingSdoRequest *request, CanOpenError error) {
+static void onVendorIdError(CanOpenPendingSdoRequest *request,
+                            CanOpenError error) {
     onError((DiscoveryContext *)request->context);
 }
 
@@ -69,7 +70,7 @@ static void onProductNameSuccess(CanOpenPendingSdoRequest *request) {
     Driver *driver;
 
     context = (DiscoveryContext *)request->context;
-    driver = getDriverForNodeName(name, length);
+    driver = getDriverForNodeName((const char *)name, length);
     if (driver != NULL) {
         onSuccess(context, driver);
     } else {
@@ -77,7 +78,8 @@ static void onProductNameSuccess(CanOpenPendingSdoRequest *request) {
     }
 }
 
-static void onProductNameError(CanOpenPendingSdoRequest *request, CanOpenError error) {
+static void onProductNameError(CanOpenPendingSdoRequest *request,
+                               CanOpenError error) {
     // Some controllers do not support reading the product name. (e.g. Curtis
     // 123X SE/E). Falling back to reading the vendor ID.
     if (error != SDO_READ_ERROR_TIMEOUT) {

@@ -1,12 +1,13 @@
 #include <discovery.h>
 #include <logger.h>
+#include <memory.h>
 #include <node.h>
 #include <servicemanager.h>
 #include <stdlib.h>
 #include <string.h>
 #include <velib/platform/plt.h>
 
-static Node nodes[127];
+Node nodes[127];
 
 static void
 onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
@@ -15,33 +16,28 @@ onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
 
     attempt = (ConnectionAttempt *)request->context;
     node = &nodes[attempt->nodeId - 1];
-    node->device = malloc(sizeof(*node->device));
+    node->device = _malloc(sizeof(*node->device));
     if (!node->device) {
         error("malloc failed for node device");
         pltExit(5);
     }
     node->device->driver = attempt->driver;
 
-    if (createDevice(node->device, attempt->nodeId, request->response.data)) {
-        free(node->device);
-        node->device = NULL;
-        free(attempt);
-        return;
-    }
-
+    createDevice(node->device, attempt->nodeId, request->response.data);
     node->connected = veTrue;
     if (node->device->driver->createDriverContext != NULL) {
         node->device->driverContext =
             node->device->driver->createDriverContext(node);
     }
-    free(attempt);
+    _free(attempt);
 }
 
-static void onControllerSerialNumberError(CanOpenPendingSdoRequest *request, CanOpenError error) {
+static void onControllerSerialNumberError(CanOpenPendingSdoRequest *request,
+                                          CanOpenError error) {
     ConnectionAttempt *attempt;
 
     attempt = (ConnectionAttempt *)request->context;
-    free(attempt);
+    _free(attempt);
 }
 
 static void onDiscoverNodeSuccess(un8 nodeId, void *context, Driver *driver) {
@@ -59,13 +55,13 @@ static void onDiscoverNodeError(un8 nodeId, void *context) {
     ConnectionAttempt *attempt;
 
     attempt = (ConnectionAttempt *)context;
-    free(attempt);
+    _free(attempt);
 }
 
 void connectToNode(un8 nodeId) {
     ConnectionAttempt *attempt;
 
-    attempt = malloc(sizeof(*attempt));
+    attempt = _malloc(sizeof(*attempt));
     if (!attempt) {
         error("malloc failed for ConnectionAttempt");
         pltExit(5);
@@ -91,7 +87,7 @@ void disconnectFromNode(un8 nodeId) {
         node->device->driver->destroyDriverContext(node,
                                                    node->device->driverContext);
     }
-    free(node->device);
+    _free(node->device);
     node->device = NULL;
     node->connected = veFalse;
 }
