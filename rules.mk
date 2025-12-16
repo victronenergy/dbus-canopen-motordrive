@@ -1,5 +1,5 @@
 T = dbus-canopen-motordrive$(EXT)
-VERSION = 1.5
+VERSION = 1.6
 
 TARGETS += $T
 INSTALL_BIN += $T
