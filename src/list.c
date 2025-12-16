@@ -89,3 +89,20 @@ void listClear(List *list) {
     list->first = NULL;
     list->last = NULL;
 }
+
+un32 listCount(List *list) {
+    ListItem *current;
+    un32 count = 0;
+
+    if (!list) {
+        return 0;
+    }
+
+    current = list->first;
+    while (current) {
+        count += 1;
+        current = current->next;
+    }
+
+    return count;
+}

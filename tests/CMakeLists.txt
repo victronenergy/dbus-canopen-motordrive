@@ -130,6 +130,9 @@ add_executable(dbus-canopen-motordrive-test
     test_discovery.cpp
     test_servicemanager.cpp
     test_node.cpp
+    test_sevcon.cpp
+    test_curtis_f.cpp
+    test_curtis_e.cpp
 )
 
 target_link_directories(dbus-canopen-motordrive-test PRIVATE

@@ -33,6 +33,7 @@ TEST_F(ListTest, listAddMallocFailure) {
 
 TEST_F(ListTest, listAdd) {
     List *list = listCreate();
+    EXPECT_EQ(listCount(list), 0);
 
     EXPECT_TRUE(list != NULL);
     EXPECT_TRUE(list->first == NULL);
@@ -47,6 +48,7 @@ TEST_F(ListTest, listAdd) {
     EXPECT_EQ(&data1, list->last->data);
     EXPECT_TRUE(list->first->prev == NULL);
     EXPECT_TRUE(list->last->next == NULL);
+    EXPECT_EQ(listCount(list), 1);
 
     int data2 = 84;
     listAdd(list, &data2);
@@ -56,6 +58,7 @@ TEST_F(ListTest, listAdd) {
     EXPECT_TRUE(list->last->next == NULL);
     EXPECT_EQ(list->last, list->first->next);
     EXPECT_EQ(list->first, list->last->prev);
+    EXPECT_EQ(listCount(list), 2);
 
     listDestroy(list);
 }
@@ -82,3 +85,5 @@ TEST_F(ListTest, listRemove) {
 
     listDestroy(list);
 }
+
+TEST_F(ListTest, listCountNoList) { EXPECT_EQ(listCount(NULL), 0); }

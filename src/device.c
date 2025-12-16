@@ -108,14 +108,14 @@ void createDbusTree(Device *device) {
     device->motorDirection = veItemCreateBasic(
         device->root, "Motor/Direction", veVariantInvalidType(&v, VE_UN8));
     device->motorTemperature = veItemCreateQuantity(
-        device->root, "Motor/Temperature", veVariantInvalidType(&v, VE_UN16),
+        device->root, "Motor/Temperature", veVariantInvalidType(&v, VE_SN16),
         &unitCelsius0Dec);
     device->motorTorque = veItemCreateQuantity(
         device->root, "Motor/Torque", veVariantInvalidType(&v, VE_UN16),
         &unitNewtonM0Dec);
     device->controllerTemperature = veItemCreateQuantity(
         device->root, "Controller/Temperature",
-        veVariantInvalidType(&v, VE_UN16), &unitCelsius0Dec);
+        veVariantInvalidType(&v, VE_SN16), &unitCelsius0Dec);
 
     snprintf(settingsPath, sizeof(settingsPath), "Settings/Devices/%s",
              device->identifier);

@@ -2,7 +2,6 @@
 #include <drivers/sevcon.h>
 #include <localsettings.h>
 #include <node.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <velib/vecan/products.h>
 
@@ -21,7 +20,7 @@ static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
     veItemOwnerSet(node->device->voltage, veVariantFloat(&v, voltage));
     veItemLocalValue(node->device->current, &v);
     veItemOwnerSet(node->device->power,
-                   veVariantSn32(&v, (sn32)voltage * v.value.Float));
+                   veVariantSn32(&v, (sn32)(voltage * v.value.Float)));
 }
 
 static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
@@ -40,7 +39,7 @@ static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
 
     veItemLocalValue(node->device->voltage, &v);
     veItemOwnerSet(node->device->power,
-                   veVariantSn32(&v, (sn32)v.value.Float * current));
+                   veVariantSn32(&v, (sn32)(v.value.Float * current)));
 }
 
 static void onMotorRpmResponse(CanOpenPendingSdoRequest *request) {
@@ -60,7 +59,7 @@ static void onMotorRpmResponse(CanOpenPendingSdoRequest *request) {
     veItemOwnerSet(node->device->motorRpm, veVariantUn16(&v, abs(rpm)));
 
     veItemLocalValue(node->device->motorDirectionInverted, &v);
-    motorDirectionInverted = veVariantIsValid(&v) && v.value.SN32 == 1;
+    motorDirectionInverted = v.value.SN32 == 1;
     // 0 - neutral, 1 - reverse, 2 - forward
     if (rpm > 0) {
         motorDirection = motorDirectionInverted ? 1 : 2;
@@ -83,7 +82,7 @@ static void onMotorTemperatureResponse(CanOpenPendingSdoRequest *request) {
     }
 
     veItemOwnerSet(node->device->motorTemperature,
-                   veVariantUn16(&v, request->response.data));
+                   veVariantSn16(&v, (sn16)request->response.data));
 }
 
 static void onMotorTorqueResponse(CanOpenPendingSdoRequest *request) {
@@ -109,7 +108,7 @@ static void onControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
     }
 
     veItemOwnerSet(node->device->controllerTemperature,
-                   veVariantUn16(&v, request->response.data));
+                   veVariantSn16(&v, (sn16)request->response.data));
 }
 
 static void onError(CanOpenPendingSdoRequest *request, CanOpenError error) {

@@ -145,8 +145,8 @@ TEST_F(DeviceTest, init) {
     veItemUid(device.motorTemperature, debug, sizeof(debug));
     EXPECT_STREQ(debug, "/Fake_Gateway_DummyDriver_12345678/Motor/Temperature");
     veItemLocalValue(device.motorTemperature, &v);
-    EXPECT_EQ(v.type.tp, VE_UN16);
-    EXPECT_EQ(v.value.UN16, VE_INVALID_UN16);
+    EXPECT_EQ(v.type.tp, VE_SN16);
+    EXPECT_EQ(v.value.SN16, VE_INVALID_SN16);
 
     veItemUid(device.motorTorque, debug, sizeof(debug));
     EXPECT_STREQ(debug, "/Fake_Gateway_DummyDriver_12345678/Motor/Torque");
@@ -158,8 +158,8 @@ TEST_F(DeviceTest, init) {
     EXPECT_STREQ(debug,
                  "/Fake_Gateway_DummyDriver_12345678/Controller/Temperature");
     veItemLocalValue(device.controllerTemperature, &v);
-    EXPECT_EQ(v.type.tp, VE_UN16);
-    EXPECT_EQ(v.value.UN16, VE_INVALID_UN16);
+    EXPECT_EQ(v.type.tp, VE_SN16);
+    EXPECT_EQ(v.value.SN16, VE_INVALID_SN16);
 
     veItemUid(device.motorDirectionInverted, debug, sizeof(debug));
     EXPECT_STREQ(

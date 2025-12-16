@@ -2,6 +2,7 @@
 #include <drivers/curtis_e.h>
 #include <localsettings.h>
 #include <logger.h>
+#include <memory.h>
 #include <node.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,7 +40,7 @@ static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
     veItemOwnerSet(node->device->voltage, veVariantFloat(&v, voltage));
     veItemLocalValue(node->device->current, &v);
     veItemOwnerSet(node->device->power,
-                   veVariantSn32(&v, (sn32)voltage * v.value.Float));
+                   veVariantSn32(&v, (sn32)(voltage * v.value.Float)));
 }
 
 static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
@@ -60,7 +61,7 @@ static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
     veItemOwnerSet(node->device->current, veVariantFloat(&v, current));
     veItemLocalValue(node->device->voltage, &v);
     veItemOwnerSet(node->device->power,
-                   veVariantSn32(&v, (sn32)v.value.Float * current));
+                   veVariantSn32(&v, (sn32)(v.value.Float * current)));
 }
 
 static void onMotorRpmResponse(CanOpenPendingSdoRequest *request) {
@@ -167,7 +168,7 @@ static void fastReadRoutine(Node *node) {
 static void *createDriverContext(Node *node) {
     CurtisEContext *context;
 
-    context = malloc(sizeof(*context));
+    context = _malloc(sizeof(*context));
     if (!context) {
         error("malloc failed for CurtisEContext");
         pltExit(5);
@@ -178,7 +179,7 @@ static void *createDriverContext(Node *node) {
     return (void *)context;
 }
 
-static void destroyDriverContext(Node *node, void *context) { free(context); }
+static void destroyDriverContext(Node *node, void *context) { _free(context); }
 
 Driver curtisEDriver = {
     .name = "curtis_e",
