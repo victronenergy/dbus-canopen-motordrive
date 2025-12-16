@@ -19,12 +19,13 @@ typedef struct _ConnectionAttempt {
     Driver *driver;
 } ConnectionAttempt;
 
-Driver *getDriverForNodeName(un8 *name, un8 length);
 void connectToNode(un8 nodeId);
 void connectToDiscoveredNodes();
 void disconnectFromNode(un8 nodeId);
 void readFromConnectedNodes(veBool fast);
 void nodesTick();
 void nodesInit();
+
+extern Node nodes[127];
 
 #endif

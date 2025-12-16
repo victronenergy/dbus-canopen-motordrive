@@ -108,14 +108,14 @@ void createDbusTree(Device *device) {
     device->motorDirection = veItemCreateBasic(
         device->root, "Motor/Direction", veVariantInvalidType(&v, VE_UN8));
     device->motorTemperature = veItemCreateQuantity(
-        device->root, "Motor/Temperature", veVariantInvalidType(&v, VE_UN16),
+        device->root, "Motor/Temperature", veVariantInvalidType(&v, VE_SN16),
         &unitCelsius0Dec);
     device->motorTorque = veItemCreateQuantity(
         device->root, "Motor/Torque", veVariantInvalidType(&v, VE_UN16),
         &unitNewtonM0Dec);
     device->controllerTemperature = veItemCreateQuantity(
         device->root, "Controller/Temperature",
-        veVariantInvalidType(&v, VE_UN16), &unitCelsius0Dec);
+        veVariantInvalidType(&v, VE_SN16), &unitCelsius0Dec);
 
     snprintf(settingsPath, sizeof(settingsPath), "Settings/Devices/%s",
              device->identifier);
@@ -127,7 +127,7 @@ void createDbusTree(Device *device) {
     veDbusItemInit(device->dbus, device->root);
 }
 
-veBool createDevice(Device *device, un8 nodeId, un32 serialNumber) {
+void createDevice(Device *device, un8 nodeId, un32 serialNumber) {
     device->nodeId = nodeId;
     device->serialNumber = serialNumber;
 
@@ -136,8 +136,6 @@ veBool createDevice(Device *device, un8 nodeId, un32 serialNumber) {
     getVrmDeviceInstance(device);
     createDbusTree(device);
     registerDbusServiceName(device);
-
-    return veFalse;
 }
 
 void destroyDevice(Device *device) {

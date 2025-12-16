@@ -17,7 +17,7 @@ extern "C" {
 // vecan0       58A   [8]  43 08 10 00 47 65 6E 34
 
 FAKE_VOID_FUNC1(testCallback, CanOpenPendingSdoRequest *);
-FAKE_VOID_FUNC1(testErrorCallback, CanOpenPendingSdoRequest *);
+FAKE_VOID_FUNC2(testErrorCallback, CanOpenPendingSdoRequest *, CanOpenError);
 static SdoMessage sdoMessage;
 static void testCallbackLocal(CanOpenPendingSdoRequest *request) {
     memcpy(&sdoMessage, &request->response, sizeof(SdoMessage));
@@ -334,6 +334,65 @@ TEST_F(CanopenTest, readSegmentedSdoAsync) {
     buffer[length] = 0;
     EXPECT_EQ(length, 16);
     EXPECT_STREQ((char *)buffer, "Gen4 Simulator44");
+}
+
+TEST_F(CanopenTest, readSegmentedSdoAsyncTwoBackToBack) {
+    un8 buffer[256];
+    un8 length;
+
+    canOpenReadSegmentedSdoAsync(1, 0x1008, 0x00, NULL, buffer, &length,
+                                 sizeof(buffer) - 1, testCallback,
+                                 testErrorCallback);
+    canOpenReadSegmentedSdoAsync(2, 0x1008, 0x00, NULL, buffer, &length,
+                                 sizeof(buffer) - 1, testCallback,
+                                 testErrorCallback);
+
+    EXPECT_NE(canOpenState.pendingSdoRequests->first, nullptr);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+
+    EXPECT_EQ(testCallback_fake.call_count, 1);
+    EXPECT_EQ(testErrorCallback_fake.call_count, 0);
+
+    buffer[length] = 0;
+    EXPECT_EQ(length, 4);
+    EXPECT_STREQ((char *)buffer, "Gen4");
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x41, 0x08, 0x10, 0x00, 0x0E, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testCallback_fake.call_count, 1);
+    EXPECT_EQ(testErrorCallback_fake.call_count, 0);
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x00, 0x47, 0x65, 0x6E, 0x34, 0x20, 0x53, 0x69}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x1B, 0x34, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testCallback_fake.call_count, 2);
+    EXPECT_EQ(testErrorCallback_fake.call_count, 0);
+
+    buffer[length] = 0;
+    EXPECT_EQ(length, 9);
+    EXPECT_STREQ((char *)buffer, "Gen4 Si44");
 }
 
 TEST_F(CanopenTest, readSegmentedSdoAsyncExpedited) {

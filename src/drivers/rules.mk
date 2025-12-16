@@ -1,1 +1,1 @@
-SRCS += curtis.c sevcon.c
+SRCS += curtis_e.c curtis_f.c sevcon.c

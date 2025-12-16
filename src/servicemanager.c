@@ -1,5 +1,6 @@
 #include <canopen.h>
 #include <ctype.h>
+#include <discovery.h>
 #include <localsettings.h>
 #include <logger.h>
 #include <servicemanager.h>
@@ -19,9 +20,6 @@ static struct VeSettingProperties discoveredNodesType = {
     .def.value.CPtr = "",
 };
 
-static un8 name[255];
-static un8 length;
-
 static void onScanEnd() {
     VeVariant v;
 
@@ -32,45 +30,44 @@ static void onScanEnd() {
     veItemSet(serviceManager.scanProgress, veVariantUn8(&v, 0));
 }
 
-static void onScanResponse(CanOpenPendingSdoRequest *request) {
+static un8 scanNodeId;
+
+static void updateScanProgress();
+
+static void onDiscoverNodeSuccess(un8 nodeId, void *context, Driver *driver) {
+    un8ArrayAdd(&serviceManager.discoveredNodeIds, nodeId);
+
+    updateScanProgress();
+}
+
+static void onDiscoverNodeError(un8 nodeId, void *context) {
+    updateScanProgress();
+}
+
+static void updateScanProgress() {
     VeVariant v;
 
-    if (getDriverForNodeName(name, length) != NULL) {
-        un8ArrayAdd(&serviceManager.discoveredNodeIds, request->nodeId);
-        // @todo: save discovered node name
-    }
-
     veItemSet(serviceManager.scanProgress,
-              veVariantUn8(&v, request->nodeId * 100 / 127));
+              veVariantUn8(&v, scanNodeId * 100 / 127));
 
-    if (request->nodeId == 127) {
+    scanNodeId += 1;
+
+    if (scanNodeId <= 127) {
+        discoverNode(scanNodeId, onDiscoverNodeSuccess, onDiscoverNodeError,
+                     NULL);
+    } else {
         onScanEnd();
     }
 }
 
-static void onScanError(CanOpenPendingSdoRequest *request) {
+static void scanBus() {
     VeVariant v;
 
-    veItemSet(serviceManager.scanProgress,
-              veVariantUn8(&v, request->nodeId * 100 / 127));
-
-    if (request->nodeId == 127) {
-        onScanEnd();
-    }
-}
-
-void scanBus() {
-    VeVariant v;
-    un8 nodeId;
-
+    scanNodeId = 1;
     veItemSet(serviceManager.scanProgress, veVariantUn8(&v, 0));
-
     un8ArrayClear(&serviceManager.discoveredNodeIds);
 
-    for (nodeId = 1; nodeId <= 127; nodeId += 1) {
-        canOpenReadSegmentedSdoAsync(nodeId, 0x1008, 0, NULL, name, &length,
-                                     255, onScanResponse, onScanError);
-    }
+    discoverNode(scanNodeId, onDiscoverNodeSuccess, onDiscoverNodeError, NULL);
 }
 
 static void onScanChanged(VeItem *item) {

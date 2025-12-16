@@ -19,6 +19,5 @@ typedef struct _ServiceManager {
 extern ServiceManager serviceManager;
 
 void serviceManagerInit(void);
-void scanBus(void);
 
 #endif

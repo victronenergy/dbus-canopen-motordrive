@@ -34,6 +34,12 @@ add_library(dbus-canopen-motordrive-lib
     ../src/device.c
     ../src/localsettings.c
     ../src/canopen.c
+    ../src/discovery.c
+    ../src/drivers/sevcon.c
+    ../src/drivers/curtis_e.c
+    ../src/drivers/curtis_f.c
+    ../src/node.c
+    ../src/servicemanager.c
 
     ../velib/task/task/platform_init.c
     ../velib/task/task/console_no_arguments.c
@@ -87,6 +93,12 @@ add_executable(dbus-canopen-motordrive-test
     test_device.cpp
     test_canopen.cpp
     test_localsettings.cpp
+    test_discovery.cpp
+    test_servicemanager.cpp
+    test_node.cpp
+    test_sevcon.cpp
+    test_curtis_f.cpp
+    test_curtis_e.cpp
 )
 
 target_link_directories(dbus-canopen-motordrive-test PRIVATE
