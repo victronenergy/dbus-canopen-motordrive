@@ -12,7 +12,7 @@ static un8 name[255];
 static un8 length;
 
 static Driver *getDriverForNodeName(const char *name, un8 length) {
-    if (length >= 4 && strncmp(name, "Gen4", 4) == 0) {
+    if (length >= 4 && strstr(name, "Gen4") != NULL) {
         return &sevconDriver;
     } else if (length >= 4 && strncmp(name, "AC F", 4) == 0) {
         return &curtisFDriver;
@@ -69,6 +69,7 @@ static void onProductNameSuccess(CanOpenPendingSdoRequest *request) {
     DiscoveryContext *context;
     Driver *driver;
 
+    name[length] = '\0';
     context = (DiscoveryContext *)request->context;
     driver = getDriverForNodeName((const char *)name, length);
     if (driver != NULL) {
@@ -106,6 +107,6 @@ void discoverNode(un8 nodeId, DiscoverNodeSuccessCallback onSuccess,
     discoveryContext->context = context;
 
     canOpenReadSegmentedSdoAsync(nodeId, 0x1008, 0, discoveryContext, name,
-                                 &length, 255, onProductNameSuccess,
-                                 onProductNameError);
+                                 &length, sizeof(name) - 1,
+                                 onProductNameSuccess, onProductNameError);
 }

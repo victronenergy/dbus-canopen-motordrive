@@ -456,6 +456,65 @@ TEST_F(DiscoveryTest, discoverNodeSuccessSevcon) {
     EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 0);
 }
 
+TEST_F(DiscoveryTest, discoverNodeSuccessSevconWithBorgWarnerControllerName) {
+    VeRawCanMsg message;
+
+    discoverNode(1, testDiscoverySuccessCallback, testDiscoveryErrorCallback,
+                 NULL);
+
+    EXPECT_NE(canOpenState.pendingSdoRequests->first, nullptr);
+
+    canOpenTx();
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 0);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 0);
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x41, 0x08, 0x10, 0x00, 0x28, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x00, 0x42, 0x6F, 0x72, 0x67, 0x57, 0x61, 0x72}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x10, 0x6E, 0x65, 0x72, 0x20, 0x47, 0x65, 0x6E}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x00, 0x34, 0x20, 0x28, 0x50, 0x4D, 0x41, 0x43}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x10, 0x29, 0x54, 0x75, 0x65, 0x20, 0x4F, 0x63}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x00, 0x74, 0x20, 0x31, 0x35, 0x20, 0x31, 0x35}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x15, 0x3A, 0x34, 0x31, 0x3A, 0x00, 0x01, 0x35}});
+    canOpenRx();
+
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 1);
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.arg2_val, &sevconDriver);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 0);
+}
+
 TEST_F(DiscoveryTest, discoverNodeSuccessCurtisF) {
     VeRawCanMsg message;
 
