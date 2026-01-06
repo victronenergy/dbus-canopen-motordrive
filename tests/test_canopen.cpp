@@ -243,6 +243,51 @@ TEST_F(CanopenTest, readSdoAsyncMallocFailure) {
                 , ::testing::ExitedWithCode(5), "");
 }
 
+TEST_F(CanopenTest, writeSdoAsync) {
+    VeRawCanMsg message;
+
+    canOpenWriteSdoAsync(1, 0x5300, 0x02, 0x00, NULL, testCallback,
+                         testErrorCallback);
+
+    EXPECT_NE(canOpenState.pendingSdoRequests->first, nullptr);
+
+    canOpenTx();
+
+    message = this->canMsgSentLog.back();
+    EXPECT_EQ(message.canId, 0x601);
+    EXPECT_EQ(message.length, 8);
+    EXPECT_EQ(message.mdata[0], 0x23);
+    EXPECT_EQ(message.mdata[1], 0x00);
+    EXPECT_EQ(message.mdata[2], 0x53);
+    EXPECT_EQ(message.mdata[3], 0x02);
+    EXPECT_EQ(message.mdata[4], 0x00);
+    EXPECT_EQ(message.mdata[5], 0x00);
+    EXPECT_EQ(message.mdata[6], 0x00);
+    EXPECT_EQ(message.mdata[7], 0x00);
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x60, 0x00, 0x53, 0x02, 0x00, 0x00, 0x00, 0x00}});
+
+    EXPECT_EQ(testCallback_fake.call_count, 0);
+    EXPECT_EQ(testErrorCallback_fake.call_count, 0);
+
+    canOpenRx();
+
+    EXPECT_EQ(testCallback_fake.call_count, 1);
+    EXPECT_EQ(testErrorCallback_fake.call_count, 0);
+}
+
+TEST_F(CanopenTest, writeSdoAsyncMallocFailure) {
+    _malloc_fake.custom_fake = NULL;
+    _malloc_fake.return_val = NULL;
+
+    ASSERT_EXIT(canOpenWriteSdoAsync(1, 0x5300, 0x02, 0x00, NULL, testCallback,
+                                     testErrorCallback);
+                , ::testing::ExitedWithCode(5), "");
+}
+
 TEST_F(CanopenTest, readSegmentedSdoAsync) {
     VeRawCanMsg message;
     un8 buffer[256];
