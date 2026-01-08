@@ -2,6 +2,7 @@
 #include <localsettings.h>
 #include <logger.h>
 #include <node.h>
+#include <platform.h>
 #include <servicemanager.h>
 #include <velib/canhw/canhw_driver.h>
 #include <velib/utils/ve_timer.h>
@@ -29,6 +30,17 @@ void taskConnect() {
     connectToDiscoveredNodes();
 }
 
+void connectToDefaultDbus() {
+    struct VeDbus *dbus;
+
+    dbus = veDbusGetDefaultBus();
+    if (dbus == NULL) {
+        error("veDbusGetDefaultBus failed");
+        pltExit(1);
+    }
+    veDbusSetListeningDbus(dbus);
+}
+
 void taskInit(void) {
     taskFastReadLastUpdate = pltGetCount1ms();
     taskReadLastUpdate = pltGetCount1ms();
@@ -36,7 +48,10 @@ void taskInit(void) {
 
     nodesInit();
     canOpenInit();
+    canOpenRegisterEmcyHandler(nodesEmcyHandler, NULL);
+    connectToDefaultDbus();
     localSettingsInit();
+    platformInit();
     serviceManagerInit();
 
     taskConnect();

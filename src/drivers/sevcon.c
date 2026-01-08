@@ -149,4 +149,5 @@ Driver sevconDriver = {
     .fastReadRoutine = fastReadRoutine,
     .createDriverContext = NULL,
     .destroyDriverContext = NULL,
+    .onEMCYMessage = NULL,
 };

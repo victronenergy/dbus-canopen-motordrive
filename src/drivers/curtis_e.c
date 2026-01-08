@@ -188,4 +188,5 @@ Driver curtisEDriver = {
     .fastReadRoutine = fastReadRoutine,
     .createDriverContext = createDriverContext,
     .destroyDriverContext = destroyDriverContext,
+    .onEMCYMessage = NULL,
 };
