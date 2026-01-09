@@ -168,6 +168,11 @@ TEST_F(DeviceTest, init) {
     veItemLocalValue(device.motorDirectionInverted, &v);
     EXPECT_EQ(v.type.tp, VE_SN32);
 
+    veItemUid(device.customName, debug, sizeof(debug));
+    EXPECT_STREQ(debug, "/Fake_Gateway_DummyDriver_12345678/CustomName");
+    veItemLocalValue(device.customName, &v);
+    EXPECT_EQ(v.type.tp, VE_STR);
+
     destroyDevice(&device);
 }
 
