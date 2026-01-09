@@ -17,6 +17,11 @@ static struct VeSettingProperties booleanType = {
     .max.value.SN32 = 1,
 };
 
+static struct VeSettingProperties customNameType = {
+    .type = VE_STR,
+    .def.value.CPtr = "",
+};
+
 static VeVariantUnitFmt unitRpm0Dec = {0, "RPM"};
 static VeVariantUnitFmt unitCelsius0Dec = {0, "C"};
 static VeVariantUnitFmt unitNewtonM0Dec = {0, "Nm"};
@@ -123,6 +128,10 @@ void createDbusTree(Device *device) {
         localSettings, settingsPath, device->root, "Motor/DirectionInverted",
         veVariantFmt, &veUnitNone, &booleanType,
         "Settings/Motor/DirectionInverted");
+
+    device->customName = veItemCreateSettingsProxy(
+        localSettings, settingsPath, device->root, "CustomName", veVariantFmt,
+        &veUnitNone, &customNameType);
 
     veDbusItemInit(device->dbus, device->root);
 }
