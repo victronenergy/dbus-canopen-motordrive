@@ -23,8 +23,12 @@
 
 #define MAX_SDO_SEND_TRIES 3
 
+typedef void (*EMCYHandler)(void *context, un8 nodeId, VeRawCanMsg *message);
+
 typedef struct _CanOpenState {
     List *pendingSdoRequests;
+    EMCYHandler emcyHandler;
+    void *emcyHandlerContext;
 } CanOpenState;
 
 extern CanOpenState canOpenState;
@@ -44,6 +48,7 @@ typedef enum {
     READ_SDO,
     READ_SEGMENTED_SDO,
     QUEUE_CALLBACK,
+    WRITE_SDO,
 } CanOpenSdoRequestType;
 
 typedef enum {
@@ -68,6 +73,7 @@ typedef struct _CanOpenPendingSdoRequest {
     CanOpenSdoRequestState state;
     un16 index;
     un8 subindex;
+    un32 data;
     SdoMessage response;
     void (*onResponse)(CanOpenPendingSdoRequest *request);
     void (*onError)(CanOpenPendingSdoRequest *request, CanOpenError error);
@@ -81,6 +87,7 @@ typedef struct _CanOpenPendingSdoRequest {
 } CanOpenPendingSdoRequest;
 
 void canOpenInit();
+void canOpenRegisterEmcyHandler(EMCYHandler handler, void *context);
 void canOpenRx();
 void canOpenTx();
 
@@ -97,5 +104,11 @@ void canOpenReadSegmentedSdoAsync(
 
 void canOpenQueueCallbackAsync(
     void *context, void (*callback)(CanOpenPendingSdoRequest *request));
+
+void canOpenWriteSdoAsync(un8 nodeId, un16 index, un8 subindex, un32 data,
+                          void *context,
+                          void (*onResponse)(CanOpenPendingSdoRequest *request),
+                          void (*onError)(CanOpenPendingSdoRequest *request,
+                                          CanOpenError error));
 
 #endif

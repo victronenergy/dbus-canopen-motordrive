@@ -56,6 +56,7 @@ void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
     pendingRequest->state = NOT_SENT;
     pendingRequest->index = index;
     pendingRequest->subindex = subindex;
+    pendingRequest->data = 0;
     pendingRequest->onResponse = onResponse;
     pendingRequest->onError = onError;
     pendingRequest->timeout = 0;
@@ -68,6 +69,41 @@ void canOpenReadSdoAsync(un8 nodeId, un16 index, un8 subindex, void *context,
     info("SDO_READ_ASYNC nodeId=%d index=%X subindex=%X",
          pendingRequest->nodeId, pendingRequest->index,
          pendingRequest->subindex);
+
+    listAdd(canOpenState.pendingSdoRequests, pendingRequest);
+}
+
+void canOpenWriteSdoAsync(un8 nodeId, un16 index, un8 subindex, un32 data,
+                          void *context,
+                          void (*onResponse)(CanOpenPendingSdoRequest *request),
+                          void (*onError)(CanOpenPendingSdoRequest *request,
+                                          CanOpenError error)) {
+    CanOpenPendingSdoRequest *pendingRequest;
+
+    pendingRequest = _malloc(sizeof(*pendingRequest));
+    if (!pendingRequest) {
+        error("Failed to allocate memory for CanOpenPendingSdoRequest");
+        pltExit(5);
+    }
+
+    pendingRequest->nodeId = nodeId;
+    pendingRequest->type = WRITE_SDO;
+    pendingRequest->state = NOT_SENT;
+    pendingRequest->index = index;
+    pendingRequest->subindex = subindex;
+    pendingRequest->data = data;
+    pendingRequest->onResponse = onResponse;
+    pendingRequest->onError = onError;
+    pendingRequest->timeout = 0;
+    pendingRequest->context = context;
+    pendingRequest->segmented_buffer = NULL;
+    pendingRequest->segmented_length = NULL;
+    pendingRequest->segmented_max_length = 0;
+    pendingRequest->segmented_toggle = 0;
+
+    info("SDO_WRITE_ASYNC nodeId=%d index=%X subindex=%X data=%X",
+         pendingRequest->nodeId, pendingRequest->index,
+         pendingRequest->subindex, pendingRequest->data);
 
     listAdd(canOpenState.pendingSdoRequests, pendingRequest);
 }
@@ -87,6 +123,7 @@ void canOpenQueueCallbackAsync(
     pendingRequest->state = NOT_SENT;
     pendingRequest->index = 0;
     pendingRequest->subindex = 0;
+    pendingRequest->data = 0;
     pendingRequest->onResponse = callback;
     pendingRequest->onError = NULL;
     pendingRequest->timeout = 0;
@@ -117,6 +154,7 @@ void canOpenReadSegmentedSdoAsync(
     pendingRequest->state = NOT_SENT;
     pendingRequest->index = index;
     pendingRequest->subindex = subindex;
+    pendingRequest->data = 0;
     pendingRequest->onResponse = onResponse;
     pendingRequest->onError = onError;
     pendingRequest->timeout = 0;
@@ -134,7 +172,16 @@ void canOpenReadSegmentedSdoAsync(
     listAdd(canOpenState.pendingSdoRequests, pendingRequest);
 }
 
-void canOpenInit() { canOpenState.pendingSdoRequests = listCreate(); }
+void canOpenInit() {
+    canOpenState.pendingSdoRequests = listCreate();
+    canOpenState.emcyHandler = NULL;
+    canOpenState.emcyHandlerContext = NULL;
+}
+
+void canOpenRegisterEmcyHandler(EMCYHandler handler, void *context) {
+    canOpenState.emcyHandler = handler;
+    canOpenState.emcyHandlerContext = context;
+}
 
 static void handleReadSdoResponse(ListItem *item,
                                   CanOpenPendingSdoRequest *pendingRequest) {
@@ -155,6 +202,21 @@ static void handleReadSdoResponse(ListItem *item,
         abort_request.subindex = pendingRequest->subindex;
         warning("SDO_READ_ASYNC_ERROR_SEGMENT_TRANSFER");
         sendRawSdoRequest(pendingRequest->nodeId, &abort_request);
+    }
+
+    _free(pendingRequest);
+}
+
+static void handleWriteSdoResponse(ListItem *item,
+                                   CanOpenPendingSdoRequest *pendingRequest) {
+    listRemove(canOpenState.pendingSdoRequests, item);
+
+    if ((pendingRequest->response.control & SDO_COMMAND_MASK) !=
+        SDO_WRITE_RESPONSE_CONTROL) {
+        warning("SDO_WRITE_ERROR");
+        pendingRequest->onError(pendingRequest, SDO_WRITE_ERROR);
+    } else {
+        pendingRequest->onResponse(pendingRequest);
     }
 
     _free(pendingRequest);
@@ -272,6 +334,9 @@ static void handleSdoResponse(ListItem *item,
     case READ_SEGMENTED_SDO:
         handleReadSegmentedSdoResponse(item, pendingRequest);
         break;
+    case WRITE_SDO:
+        handleWriteSdoResponse(item, pendingRequest);
+        break;
     case QUEUE_CALLBACK:
     default:
         break;
@@ -283,9 +348,22 @@ void canOpenRx() {
     ListItem *iterator;
     CanOpenPendingSdoRequest *pendingRequest;
     SdoMessage response;
+    un8 node;
+
+    memset(&message, 0, sizeof(message));
 
     while (veCanRead(&message)) {
         memcpy(response.byte, message.mdata, message.length);
+
+        if ((message.canId & 0xFFFFFF80) == 0x80) {
+            node = message.canId & 0x7F;
+            if (canOpenState.emcyHandler != NULL) {
+                canOpenState.emcyHandler(canOpenState.emcyHandlerContext, node,
+                                         &message);
+            }
+            continue;
+        }
+
         iterator = canOpenState.pendingSdoRequests->first;
         if (iterator) {
             pendingRequest = (CanOpenPendingSdoRequest *)iterator->data;
@@ -333,6 +411,19 @@ handleQueueCallbackRequest(ListItem *item,
     pendingRequest->onResponse(pendingRequest);
 }
 
+static void
+handleQueueWriteSdoRequest(ListItem *item,
+                           CanOpenPendingSdoRequest *pendingRequest) {
+    SdoMessage request;
+
+    request.control = SDO_WRITE_REQUEST_CONTROL | SDO_EXPEDITED | 1;
+    request.index = pendingRequest->index;
+    request.subindex = pendingRequest->subindex;
+    request.data = pendingRequest->data;
+
+    sendRawSdoRequest(pendingRequest->nodeId, &request);
+}
+
 static void handleSdoRequest(ListItem *item,
                              CanOpenPendingSdoRequest *pendingRequest) {
     switch (pendingRequest->type) {
@@ -341,6 +432,9 @@ static void handleSdoRequest(ListItem *item,
         break;
     case READ_SEGMENTED_SDO:
         handleReadSegmentedSdoRequest(item, pendingRequest);
+        break;
+    case WRITE_SDO:
+        handleQueueWriteSdoRequest(item, pendingRequest);
         break;
     case QUEUE_CALLBACK:
     default:
@@ -369,6 +463,7 @@ void canOpenTx() {
             listRemove(canOpenState.pendingSdoRequests, iterator);
             pendingRequest->onError(pendingRequest, SDO_READ_ERROR_TIMEOUT);
             _free(pendingRequest);
+            return;
         }
 
         if (pendingRequest->type == QUEUE_CALLBACK) {
