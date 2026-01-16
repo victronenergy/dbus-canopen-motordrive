@@ -31,10 +31,9 @@ TEST_F(DeviceTest, init) {
 
     Device device;
     un8 nodeId;
-    un32 serialNumber;
+    const char *serialNumber = "12345678";
 
     nodeId = 5;
-    serialNumber = 12345678;
     device.driver = &dummyDriver;
 
     veDbusChangeName_fake.custom_fake =
@@ -48,7 +47,7 @@ TEST_F(DeviceTest, init) {
     createDevice(&device, nodeId, serialNumber);
 
     EXPECT_EQ(device.nodeId, nodeId);
-    EXPECT_EQ(device.serialNumber, serialNumber);
+    EXPECT_STREQ(device.serialNumber, "12345678");
     EXPECT_STREQ(device.identifier, "Fake_Gateway_DummyDriver_12345678");
     EXPECT_EQ(device.deviceInstance, 9999);
 
@@ -109,7 +108,7 @@ TEST_F(DeviceTest, init) {
     veItemUid(item, debug, sizeof(debug));
     EXPECT_STREQ(debug, "/Fake_Gateway_DummyDriver_12345678/Serial");
     veItemLocalValue(item, &v);
-    EXPECT_EQ(v.type.tp, VE_HEAP_STR);
+    EXPECT_EQ(v.type.tp, VE_STR);
     EXPECT_STREQ((char *)v.value.Ptr, "12345678");
 
     veItemUid(device.voltage, debug, sizeof(debug));
@@ -179,10 +178,10 @@ TEST_F(DeviceTest, init) {
 TEST_F(DeviceTest, failureToConnectToDbus) {
     Device device;
     un8 nodeId;
-    un32 serialNumber;
+    const char *serialNumber;
 
     nodeId = 5;
-    serialNumber = 12345678;
+    serialNumber = "12345678";
     device.driver = &dummyDriver;
 
     veDbusConnectString_fake.return_val = NULL;
@@ -194,10 +193,10 @@ TEST_F(DeviceTest, failureToConnectToDbus) {
 TEST_F(DeviceTest, failureToGetVrmInstance) {
     Device device;
     un8 nodeId;
-    un32 serialNumber;
+    const char *serialNumber;
 
     nodeId = 5;
-    serialNumber = 12345678;
+    serialNumber = "12345678";
     device.driver = &dummyDriver;
 
     veDbusGetVrmDeviceInstanceExt_fake.return_val = -1;
@@ -209,10 +208,10 @@ TEST_F(DeviceTest, failureToGetVrmInstance) {
 TEST_F(DeviceTest, failureToRegisterDbusServiceName) {
     Device device;
     un8 nodeId;
-    un32 serialNumber;
+    const char *serialNumber;
 
     nodeId = 5;
-    serialNumber = 12345678;
+    serialNumber = "12345678";
     device.driver = &dummyDriver;
 
     veDbusChangeName_fake.return_val = veFalse;
