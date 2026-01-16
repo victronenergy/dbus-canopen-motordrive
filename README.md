@@ -1,13 +1,13 @@
 # dbus-canopen-motordrive
 
-Venus OS driver for Sevcon Gen4 AC, Curtis F series and Curtis E/SE series controllers: enables communication and motordrive data reporting via D-Bus.
+Venus OS driver for Sevcon Gen4 AC, Curtis F series, Curtis E/SE series and Emsiso controllers: enables communication and motordrive data reporting via D-Bus.
 
 ![dbus-canopen-motordrive](doc/dbus-canopen-motordrive-header.png)
 
 ## Features
 
 - Works out of the box without the need to re-configure the motor controller.
-- Compatible with Sevcon Gen4 AC, Curtis F series and Curtis E/SE series controllers.
+- Compatible with Sevcon Gen4 AC, Curtis F series, Curtis E/SE series and Emsiso controllers.
 - Report motor power, rpm, direction, temperature, torque and controller temperature.
 - Easy setup. Scan the CAN bus and find compatible motor controllers.
 - Supports multiple controllers on the same bus (each controller must have a unique CANopen node ID).
@@ -83,6 +83,14 @@ To enable CAN termination on the controller, connect CAN TERM H (pin 21) and CAN
 Driver has been tested on the Curtis 1232 SE and 1234 E.
 However it should work on any 123X E/SE series controllers.
 
+## How to connect the Emsiso controller to a Victron GX product
+
+@todo:
+
+### Emsiso support
+
+@todo
+
 ## How to configure the Victron GX product
 
 Requires Venus OS version 3.70~45 or later.
@@ -140,3 +148,17 @@ Note that the device power is calculated as Capacitor Volts * Battery Current wh
 | 0x320B | 0 | Motor Temperature |
 | 0x322A | 0 | Controller Temperature |
 | 0x306C | 0 | Swap Motor Direction |
+
+## Emsiso - Which SDOs are used by the driver
+
+| index | subindex | Description |
+|------------|----------------|---|
+| 0x1008 | 0 | Controller Name |
+| 0x2007 | 1 | Controller Serial Number |
+| 0x31F0 | 8 | Battery Voltage, V |
+| 0x31F0 | 7 | Battery Current, A |
+| 0x3101 | 1 | Motor RPM |
+| 0x3101 | 0xB | Motor Temperature |
+| 0x3101 | 3 | Motor Torque |
+| 0x31CD | 0 | Controller Temperature |
+| 0x31CF | 0 | Coolant Temperature |
