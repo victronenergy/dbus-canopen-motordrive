@@ -7,6 +7,7 @@ typedef struct _Device Device;
 #include <velib/types/variant_print.h>
 #include <velib/types/ve_dbus_item.h>
 #include <velib/types/ve_item_def.h>
+#include <velib/types/ve_str.h>
 #include <velib/utils/ve_item_utils.h>
 
 typedef struct _Device {
@@ -34,6 +35,7 @@ typedef struct _Device {
     void *driverContext;
 } Device;
 
+void getDeviceDisplayName(Device *device, VeStr *out);
 void createDevice(Device *device, un8 nodeId, un32 serialNumber);
 void destroyDevice(Device *device);
 

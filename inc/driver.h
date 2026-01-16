@@ -13,6 +13,7 @@ typedef struct _Driver {
     void (*fastReadRoutine)(Node *node);
     void *(*createDriverContext)(Node *node);
     void (*destroyDriverContext)(Node *node, void *context);
+    void (*onEMCYMessage)(Node *node, VeRawCanMsg *message);
 } Driver;
 
 #endif

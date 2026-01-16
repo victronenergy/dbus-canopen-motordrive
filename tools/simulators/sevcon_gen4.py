@@ -87,6 +87,14 @@ def simulate_sevcon_data(node, update_interval=0.1):
         time.sleep(update_interval)
 
 
+def listen(node):
+    while True:
+        command = sys.stdin.readline()
+        if command == "overcurrent\n":
+            print("EMCY: Motor Overcurrent Fault")
+            node.emcy.send(0x1000, 0x00, b"\xC2\x52\x02\x00\x00")
+
+
 def main(argv):
     parser = argparse.ArgumentParser(prog="ProgramName")
     parser.add_argument(
@@ -114,6 +122,7 @@ def main(argv):
         target=simulate_sevcon_data, args=(sevcon_node,), daemon=True
     )
     simulation_thread.start()
+    threading.Thread(target=listen, args=(sevcon_node,), daemon=True).start()
 
     print("Simulator. Press Ctrl+C to exit.")
     try:

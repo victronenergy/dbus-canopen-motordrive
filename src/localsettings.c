@@ -7,20 +7,11 @@
 VeItem *localSettings;
 
 void localSettingsInit(void) {
-    struct VeDbus *dbus;
-
-    dbus = veDbusGetDefaultBus();
-    if (dbus == NULL) {
-        error("veDbusGetDefaultBus failed");
-        pltExit(1);
-    }
-    veDbusSetListeningDbus(dbus);
-
     localSettings =
-        veItemGetOrCreateUid(veValueTree(), "com.victonenergy.consumer");
+        veItemGetOrCreateUid(veValueTree(), "com.victonenergy.settings");
     if (!veDbusAddRemoteService("com.victronenergy.settings", localSettings,
                                 veTrue)) {
-        error("veDbusAddRemoteService failed");
+        error("veDbusAddRemoteService failed for com.victronenergy.settings");
         pltExit(4);
     }
 }

@@ -7,8 +7,13 @@ static struct VeDbus fakeDbusInstance;
 static struct VeRemoteService fakeRemoteService;
 
 class BaseFixture : public ::testing::Test {
+  private:
+    struct VeItem fakeRoot;
+
   protected:
     void SetUp() override {
+        memset(&fakeRoot, 0, sizeof(fakeRoot));
+
         RESET_FAKE(_malloc);
         RESET_FAKE(_realloc);
         RESET_FAKE(_free);
@@ -33,6 +38,8 @@ class BaseFixture : public ::testing::Test {
         pltGetCount1ms_fake.return_val = 0;
         RESET_FAKE(veDbusAddRemoteService);
         veDbusAddRemoteService_fake.return_val = &fakeRemoteService;
+        RESET_FAKE(veValueTree);
+        veValueTree_fake.return_val = &fakeRoot;
     }
 
     void TearDown() override {}
