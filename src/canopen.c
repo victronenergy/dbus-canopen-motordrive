@@ -172,7 +172,16 @@ void canOpenReadSegmentedSdoAsync(
     listAdd(canOpenState.pendingSdoRequests, pendingRequest);
 }
 
-void canOpenInit() { canOpenState.pendingSdoRequests = listCreate(); }
+void canOpenInit() {
+    canOpenState.pendingSdoRequests = listCreate();
+    canOpenState.emcyHandler = NULL;
+    canOpenState.emcyHandlerContext = NULL;
+}
+
+void canOpenRegisterEmcyHandler(EMCYHandler handler, void *context) {
+    canOpenState.emcyHandler = handler;
+    canOpenState.emcyHandlerContext = context;
+}
 
 static void handleReadSdoResponse(ListItem *item,
                                   CanOpenPendingSdoRequest *pendingRequest) {
@@ -339,9 +348,22 @@ void canOpenRx() {
     ListItem *iterator;
     CanOpenPendingSdoRequest *pendingRequest;
     SdoMessage response;
+    un8 node;
+
+    memset(&message, 0, sizeof(message));
 
     while (veCanRead(&message)) {
         memcpy(response.byte, message.mdata, message.length);
+
+        if ((message.canId & 0xFFFFFF80) == 0x80) {
+            node = message.canId & 0x7F;
+            if (canOpenState.emcyHandler != NULL) {
+                canOpenState.emcyHandler(canOpenState.emcyHandlerContext, node,
+                                         &message);
+            }
+            continue;
+        }
+
         iterator = canOpenState.pendingSdoRequests->first;
         if (iterator) {
             pendingRequest = (CanOpenPendingSdoRequest *)iterator->data;
@@ -441,6 +463,7 @@ void canOpenTx() {
             listRemove(canOpenState.pendingSdoRequests, iterator);
             pendingRequest->onError(pendingRequest, SDO_READ_ERROR_TIMEOUT);
             _free(pendingRequest);
+            return;
         }
 
         if (pendingRequest->type == QUEUE_CALLBACK) {

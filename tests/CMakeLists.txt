@@ -40,6 +40,7 @@ add_library(dbus-canopen-motordrive-lib
     ../src/drivers/curtis_f.c
     ../src/node.c
     ../src/servicemanager.c
+    ../src/platform.c
 
     ../velib/task/task/platform_init.c
     ../velib/task/task/console_no_arguments.c
@@ -99,6 +100,7 @@ add_executable(dbus-canopen-motordrive-test
     test_sevcon.cpp
     test_curtis_f.cpp
     test_curtis_e.cpp
+    test_platform.cpp
 )
 
 target_link_directories(dbus-canopen-motordrive-test PRIVATE

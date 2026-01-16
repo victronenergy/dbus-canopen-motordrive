@@ -7,10 +7,22 @@ extern "C" {
 #include "servicemanager.h"
 }
 
+FAKE_VALUE_FUNC3(veBool, testSevconSetter, struct VeItem *, void *,
+                 VeVariant *);
+static char payload[1024];
+static veBool testSevconSetterLocal(struct VeItem *item, void *context,
+                                    VeVariant *v) {
+    strcpy(payload, (const char *)v->value.CPtr);
+    return veTrue;
+}
+
 class SevconTest : public CanFixture {
   protected:
     void SetUp() override {
         CanFixture::SetUp();
+        RESET_FAKE(testSevconSetter);
+
+        testSevconSetter_fake.custom_fake = testSevconSetterLocal;
 
         canOpenInit();
         nodesInit();
@@ -304,4 +316,64 @@ TEST_F(SevconTest, motorDirection) {
     canOpenRx();
     EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 500);
     EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 2);
+}
+
+TEST_F(SevconTest, emcyMessage) {
+    VeRawCanMsg message;
+    VeItem *item;
+
+    item = veItemGetOrCreateUid(
+        veValueTree(), "com.victronenergy.platform/Notifications/Inject");
+    EXPECT_NE(item, nullptr);
+    canOpenRegisterEmcyHandler(nodesEmcyHandler, NULL);
+    veItemSetSetter(item, testSevconSetter, NULL);
+    EXPECT_EQ(testSevconSetter_fake.call_count, 0);
+
+    EXPECT_EQ(nodes[0].connected, veFalse);
+    connectToNode(1);
+    canOpenTx();
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veTrue);
+
+    this->canMsgSentLog.clear();
+
+    // Unknown error code
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x10, 0x00, 0x00, 0x11, 0x11, 0x02, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testSevconSetter_fake.call_count, 0);
+
+    // Motor Overcurrent Fault (data = 0)
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x10, 0x00, 0x00, 0xC2, 0x52, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testSevconSetter_fake.call_count, 0);
+
+    // Motor Overcurrent Fault
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x10, 0x00, 0x00, 0xC2, 0x52, 0x02, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testSevconSetter_fake.call_count, 1);
+    EXPECT_STREQ(payload,
+                 "1\tSevcon motor controller [1]\tMotor Overcurrent Fault");
 }

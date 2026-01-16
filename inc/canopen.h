@@ -23,8 +23,12 @@
 
 #define MAX_SDO_SEND_TRIES 3
 
+typedef void (*EMCYHandler)(void *context, un8 nodeId, VeRawCanMsg *message);
+
 typedef struct _CanOpenState {
     List *pendingSdoRequests;
+    EMCYHandler emcyHandler;
+    void *emcyHandlerContext;
 } CanOpenState;
 
 extern CanOpenState canOpenState;
@@ -83,6 +87,7 @@ typedef struct _CanOpenPendingSdoRequest {
 } CanOpenPendingSdoRequest;
 
 void canOpenInit();
+void canOpenRegisterEmcyHandler(EMCYHandler handler, void *context);
 void canOpenRx();
 void canOpenTx();
 

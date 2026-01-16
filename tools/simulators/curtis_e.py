@@ -81,6 +81,13 @@ def simulate_curtis_e_data(node, update_interval=0.125):
         )
         time.sleep(update_interval)
 
+def listen(node):
+    while True:
+        command = sys.stdin.readline()
+        if command == "overcurrent\n":
+            print("Controller Overcurrent (Code 12)")
+            node.emcy.send(0x1000, 0x01, b'\x00\x00\x00\x08\x00')
+
 
 def main(argv):
     parser = argparse.ArgumentParser(prog="ProgramName")
@@ -109,6 +116,7 @@ def main(argv):
         target=simulate_curtis_e_data, args=(curtis_e_node,), daemon=True
     )
     simulation_thread.start()
+    threading.Thread(target=listen, args=(curtis_e_node,), daemon=True).start()
 
     print("Simulator. Press Ctrl+C to exit.")
     try:

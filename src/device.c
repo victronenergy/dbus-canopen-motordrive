@@ -136,6 +136,19 @@ void createDbusTree(Device *device) {
     veDbusItemInit(device->dbus, device->root);
 }
 
+void getDeviceDisplayName(Device *device, VeStr *out) {
+    VeVariant v;
+
+    veItemLocalValue(device->customName, &v);
+    if (veVariantIsValid(&v) && ((const char *)v.value.CPtr)[0] != 0) {
+        veStrNewFormat(out, "%s", (const char *)v.value.CPtr);
+        return;
+    }
+
+    veStrNewFormat(out, "%s [%u]", veProductGetName(device->driver->productId),
+                   device->serialNumber);
+}
+
 void createDevice(Device *device, un8 nodeId, un32 serialNumber) {
     device->nodeId = nodeId;
     device->serialNumber = serialNumber;
