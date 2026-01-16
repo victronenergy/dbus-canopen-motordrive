@@ -315,4 +315,5 @@ Driver curtisEDriver = {
     .createDriverContext = createDriverContext,
     .destroyDriverContext = destroyDriverContext,
     .onEMCYMessage = onEMCYMessage,
+    .fetchSerialNumber = NULL,
 };

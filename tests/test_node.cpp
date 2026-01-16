@@ -61,7 +61,43 @@ TEST_F(NodeTest, connectToNodeSerialNumberTimeout) {
     EXPECT_EQ(nodes[0].connected, veFalse);
 }
 
+TEST_F(NodeTest, connectToNodeCustomSerialNumberTimeout) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x45, 0x4D, 0x44, 0x49}});
+    canOpenRx();
+    canOpenTx();
+    pltGetCount1ms_fake.return_val = 50;
+    canOpenTx();
+
+    EXPECT_EQ(nodes[0].connected, veFalse);
+}
+
 TEST_F(NodeTest, connectToNodeDeviceMallocFailure) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x45, 0x4D, 0x44, 0x49}});
+    _malloc_fake.custom_fake = NULL;
+    _malloc_fake.return_val = NULL;
+
+    ASSERT_EXIT(canOpenRx();, ::testing::ExitedWithCode(5), "");
+}
+
+TEST_F(NodeTest, connectToNodeCustomSerialNumberMallocFailure) {
     EXPECT_EQ(nodes[0].connected, veFalse);
 
     connectToNode(1);

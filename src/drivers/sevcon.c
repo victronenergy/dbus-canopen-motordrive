@@ -309,4 +309,5 @@ Driver sevconDriver = {
     .createDriverContext = NULL,
     .destroyDriverContext = NULL,
     .onEMCYMessage = onEMCYMessage,
+    .fetchSerialNumber = NULL,
 };

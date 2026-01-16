@@ -4,6 +4,7 @@
 #include <localsettings.h>
 #include <logger.h>
 #include <stdio.h>
+#include <string.h>
 #include <velib/canhw/canhw_driver.h>
 #include <velib/platform/plt.h>
 #include <velib/types/ve_values.h>
@@ -46,7 +47,7 @@ static void createDeviceIdentifier(Device *device) {
             *c = '_';
         }
     }
-    snprintf(device->identifier, sizeof(device->identifier), "%s_%s_%u",
+    snprintf(device->identifier, sizeof(device->identifier), "%s_%s_%s",
              canGwId, device->driver->name, device->serialNumber);
 }
 
@@ -73,7 +74,6 @@ static void registerDbusServiceName(Device *device) {
 
 void createDbusTree(Device *device) {
     VeVariant v;
-    char serialNumberStr[11];
     char settingsPath[128];
 
     device->root = veItemGetOrCreateUid(veValueTree(), device->identifier);
@@ -94,10 +94,8 @@ void createDbusTree(Device *device) {
     veItemCreateBasic(device->root, "Mgmt/ProcessVersion",
                       veVariantStr(&v, pltProgramVersion()));
 
-    snprintf(serialNumberStr, sizeof(serialNumberStr), "%u",
-             device->serialNumber);
     veItemCreateBasic(device->root, "Serial",
-                      veVariantHeapStr(&v, serialNumberStr));
+                      veVariantStr(&v, device->serialNumber));
 
     device->voltage =
         veItemCreateQuantity(device->root, "Dc/0/Voltage",
@@ -121,6 +119,9 @@ void createDbusTree(Device *device) {
     device->controllerTemperature = veItemCreateQuantity(
         device->root, "Controller/Temperature",
         veVariantInvalidType(&v, VE_SN16), &unitCelsius0Dec);
+    device->coolantTemperature = veItemCreateQuantity(
+        device->root, "Coolant/Temperature", veVariantInvalidType(&v, VE_SN16),
+        &unitCelsius0Dec);
 
     snprintf(settingsPath, sizeof(settingsPath), "Settings/Devices/%s",
              device->identifier);
@@ -145,13 +146,14 @@ void getDeviceDisplayName(Device *device, VeStr *out) {
         return;
     }
 
-    veStrNewFormat(out, "%s [%u]", veProductGetName(device->driver->productId),
+    veStrNewFormat(out, "%s [%s]", veProductGetName(device->driver->productId),
                    device->serialNumber);
 }
 
-void createDevice(Device *device, un8 nodeId, un32 serialNumber) {
+void createDevice(Device *device, un8 nodeId, const char *serialNumber) {
     device->nodeId = nodeId;
-    device->serialNumber = serialNumber;
+    strncpy(device->serialNumber, serialNumber,
+            sizeof(device->serialNumber) - 1);
 
     connectToDbus(device);
     createDeviceIdentifier(device);
@@ -168,5 +170,4 @@ void destroyDevice(Device *device) {
 
     device->nodeId = 0;
     device->deviceInstance = 0;
-    device->serialNumber = 0;
 }
