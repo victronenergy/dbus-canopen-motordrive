@@ -84,6 +84,13 @@ def simulate_curtis_f_data(node, update_interval=0.125):
         )
         time.sleep(update_interval)
 
+def listen(node):
+    while True:
+        command = sys.stdin.readline()
+        if command == "overcurrent\n":
+            print("EMCY: Controller Overcurrent Phase W")
+            node.emcy.send(0xFF12, 0x01, b'\x10\x25\x02\x00\x00')
+
 def main(argv):
     parser = argparse.ArgumentParser(prog="ProgramName")
     parser.add_argument(
@@ -111,6 +118,7 @@ def main(argv):
         target=simulate_curtis_f_data, args=(curtis_f_node,), daemon=True
     )
     simulation_thread.start()
+    threading.Thread(target=listen, args=(curtis_f_node,), daemon=True).start()
 
     print("Simulator. Press Ctrl+C to exit.")
     try:

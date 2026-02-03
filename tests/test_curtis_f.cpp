@@ -7,10 +7,22 @@ extern "C" {
 #include "servicemanager.h"
 }
 
+FAKE_VALUE_FUNC3(veBool, testCurtisFSetter, struct VeItem *, void *,
+                 VeVariant *);
+static char payload[1024];
+static veBool testCurtisFSetterLocal(struct VeItem *item, void *context,
+                                     VeVariant *v) {
+    strcpy(payload, (const char *)v->value.CPtr);
+    return veTrue;
+}
+
 class CurtisFTest : public CanFixture {
   protected:
     void SetUp() override {
         CanFixture::SetUp();
+        RESET_FAKE(testCurtisFSetter);
+
+        testCurtisFSetter_fake.custom_fake = testCurtisFSetterLocal;
 
         canOpenInit();
         nodesInit();
@@ -395,4 +407,79 @@ TEST_F(CurtisFTest, motorDirection) {
     canOpenRx();
     EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 500);
     EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 1);
+}
+
+TEST_F(CurtisFTest, emcyMessage) {
+    VeRawCanMsg message;
+    VeItem *item;
+    VeVariant v;
+
+    item = veItemGetOrCreateUid(
+        veValueTree(), "com.victronenergy.platform/Notifications/Inject");
+    EXPECT_NE(item, nullptr);
+    canOpenRegisterEmcyHandler(nodesEmcyHandler, NULL);
+    veItemSetSetter(item, testCurtisFSetter, NULL);
+    EXPECT_EQ(testCurtisFSetter_fake.call_count, 0);
+
+    // error
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x00, 0x62, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    // Ignore error node isn't connected
+    EXPECT_EQ(testCurtisFSetter_fake.call_count, 0);
+
+    EXPECT_EQ(nodes[0].connected, veFalse);
+    connectToNode(1);
+    canOpenTx();
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x41, 0x43, 0x20, 0x46}});
+    canOpenRx();
+    canOpenTx();
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+    EXPECT_EQ(nodes[0].connected, veTrue);
+
+    this->canMsgSentLog.clear();
+
+    // No fault
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testCurtisFSetter_fake.call_count, 0);
+
+    // Overcurrent error
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x12, 0xFF, 0x01, 0x10, 0x25, 0x01, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testCurtisFSetter_fake.call_count, 1);
+    EXPECT_STREQ(payload, "1\tCurtis motor controller [1]\tController "
+                          "Overcurrent (fault type: 1)");
+
+    veVariantStr(&v, "My Curtis Controller");
+    veItemOwnerSet(nodes[0].device->customName, &v);
+
+    // Unknown error
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x12, 0xFF, 0x01, 0x11, 0x25, 0x01, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testCurtisFSetter_fake.call_count, 2);
+    EXPECT_STREQ(payload, "1\tMy Curtis Controller\tUnknown Error 0xFF12 "
+                          "Record 0x2511 (fault type: 1)");
 }

@@ -18,10 +18,10 @@ DEFINE_FAKE_VALUE_FUNC1(veBool, veCanRead, VeRawCanMsg *);
 DEFINE_FAKE_VALUE_FUNC0(un16, pltGetCount1ms);
 DEFINE_FAKE_VALUE_FUNC3(struct VeRemoteService *, veDbusAddRemoteService,
                         char const *, struct VeItem *, veBool);
+DEFINE_FAKE_VALUE_FUNC0(struct VeItem *, veValueTree);
 }
 
 static VeCanGateway fakeVeCanGatewayInstance;
-static struct VeItem fakeRoot;
 
 extern "C" {
 
@@ -61,8 +61,6 @@ VeCanGateway *veCanGwActive(void) { return &fakeVeCanGatewayInstance; }
 size_t veCanGwId(VeCanGateway *gw, char *buf, size_t len) {
     return ve_snprintf(buf, len, "Fake:Gateway");
 }
-
-struct VeItem *veValueTree(void) { return &fakeRoot; }
 
 void veDbusItemInit(VeDbus *dbus, struct VeItem *items) {}
 void veDbusDisconnect(VeDbus *dbus) {}

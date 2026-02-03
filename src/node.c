@@ -142,4 +142,14 @@ void readFromConnectedNodes(veBool fast) {
     }
 }
 
+void nodesEmcyHandler(void *context, un8 nodeId, VeRawCanMsg *message) {
+    Node *node;
+
+    node = &nodes[nodeId - 1];
+    if (node->connected) {
+        node->device->driver->onEMCYMessage(node, message);
+    }
+    warning("Unhandled EMCY message from node %u", nodeId);
+}
+
 void nodesInit() { memset(nodes, 0, sizeof(nodes)); }
