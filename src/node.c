@@ -14,6 +14,20 @@ static void createNodeFromSerialNumber(ConnectionAttempt *attempt,
                                        const char *serialNumber) {
     Node *node;
 
+    for (un8 i = 0; i < ARRAY_LENGTH(nodes); i += 1) {
+        node = &nodes[i];
+        if (node->connected &&
+            strcmp(node->device->serialNumber, serialNumber) == 0 &&
+            node->device->driver == attempt->driver) {
+            warning(
+                "Connection attempt skipped. Node '%d' is already connected "
+                "to serial number '%s' from driver '%s'.",
+                node->device->nodeId, serialNumber, node->device->driver->name);
+            _free(attempt);
+            return;
+        }
+    }
+
     node = &nodes[attempt->nodeId - 1];
     node->device = _malloc(sizeof(*node->device));
     if (!node->device) {

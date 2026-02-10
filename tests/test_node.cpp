@@ -148,6 +148,165 @@ TEST_F(NodeTest, connectToNodeSuccessSevcon) {
     EXPECT_EQ(nodes[0].connected, veFalse);
 }
 
+TEST_F(NodeTest, connectToTwoSevconNodesWithSameSerialNumber) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+    EXPECT_EQ(nodes[1].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veTrue);
+
+    connectToNode(2);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veTrue);
+    EXPECT_EQ(nodes[1].connected, veFalse);
+
+    disconnectFromNode(1);
+
+    connectToNode(2);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veFalse);
+    EXPECT_EQ(nodes[1].connected, veTrue);
+
+    disconnectFromNode(2);
+
+    EXPECT_EQ(nodes[0].connected, veFalse);
+    EXPECT_EQ(nodes[1].connected, veFalse);
+}
+
+TEST_F(NodeTest, connectToNodeSuccessTwoSevcon) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+    EXPECT_EQ(nodes[1].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veTrue);
+
+    connectToNode(2);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x02, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veTrue);
+    EXPECT_EQ(nodes[1].connected, veTrue);
+}
+
+TEST_F(NodeTest, connectToNodeSuccessSevconAndCurtisF) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+    EXPECT_EQ(nodes[1].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veTrue);
+
+    connectToNode(2);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x41, 0x43, 0x20, 0x46}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x582,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veTrue);
+    EXPECT_EQ(nodes[1].connected, veTrue);
+}
+
 TEST_F(NodeTest, connectToNodeSuccessCurtisF) {
     EXPECT_EQ(nodes[0].connected, veFalse);
 
