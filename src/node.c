@@ -3,18 +3,31 @@
 #include <memory.h>
 #include <node.h>
 #include <servicemanager.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <velib/platform/plt.h>
 
 Node nodes[127];
 
-static void
-onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
-    ConnectionAttempt *attempt;
+static void createNodeFromSerialNumber(ConnectionAttempt *attempt,
+                                       const char *serialNumber) {
     Node *node;
 
-    attempt = (ConnectionAttempt *)request->context;
+    for (un8 i = 0; i < ARRAY_LENGTH(nodes); i += 1) {
+        node = &nodes[i];
+        if (node->connected &&
+            strcmp(node->device->serialNumber, serialNumber) == 0 &&
+            node->device->driver == attempt->driver) {
+            warning(
+                "Connection attempt skipped. Node '%d' is already connected "
+                "to serial number '%s' from driver '%s'.",
+                node->device->nodeId, serialNumber, node->device->driver->name);
+            _free(attempt);
+            return;
+        }
+    }
+
     node = &nodes[attempt->nodeId - 1];
     node->device = _malloc(sizeof(*node->device));
     if (!node->device) {
@@ -23,7 +36,7 @@ onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
     }
     node->device->driver = attempt->driver;
 
-    createDevice(node->device, attempt->nodeId, request->response.data);
+    createDevice(node->device, attempt->nodeId, serialNumber);
     node->connected = veTrue;
     if (node->device->driver->createDriverContext != NULL) {
         node->device->driverContext =
@@ -32,8 +45,36 @@ onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
     _free(attempt);
 }
 
-static void onControllerSerialNumberError(CanOpenPendingSdoRequest *request,
-                                          CanOpenError error) {
+static void onCustomSerialNumberResponse(FetchSerialNumberRequest *request,
+                                         const char *serialNumber) {
+    ConnectionAttempt *attempt;
+
+    attempt = (ConnectionAttempt *)request->context;
+    createNodeFromSerialNumber(attempt, serialNumber);
+
+    _free(request);
+}
+
+static void onCustomSerialNumberError(FetchSerialNumberRequest *request) {
+    ConnectionAttempt *attempt;
+
+    attempt = (ConnectionAttempt *)request->context;
+    _free(attempt);
+    _free(request);
+}
+
+static void onStandardSerialNumberResponse(CanOpenPendingSdoRequest *request) {
+    ConnectionAttempt *attempt;
+    char serialNumber[11];
+
+    attempt = (ConnectionAttempt *)request->context;
+    snprintf(serialNumber, sizeof(serialNumber), "%u", request->response.data);
+
+    createNodeFromSerialNumber(attempt, serialNumber);
+}
+
+static void onStandardSerialNumberError(CanOpenPendingSdoRequest *request,
+                                        CanOpenError error) {
     ConnectionAttempt *attempt;
 
     attempt = (ConnectionAttempt *)request->context;
@@ -46,9 +87,24 @@ static void onDiscoverNodeSuccess(un8 nodeId, void *context, Driver *driver) {
     attempt = (ConnectionAttempt *)context;
     attempt->driver = driver;
 
-    canOpenReadSdoAsync(attempt->nodeId, 0x1018, 4, attempt,
-                        onControllerSerialNumberResponse,
-                        onControllerSerialNumberError);
+    if (driver->fetchSerialNumber != NULL) {
+        FetchSerialNumberRequest *request;
+
+        request = _malloc(sizeof(*request));
+        if (!request) {
+            error("malloc failed for FetchSerialNumberRequest");
+            pltExit(5);
+        }
+        request->nodeId = nodeId;
+        request->context = (void *)attempt;
+        request->onSuccess = onCustomSerialNumberResponse;
+        request->onError = onCustomSerialNumberError;
+        driver->fetchSerialNumber(request);
+    } else {
+        canOpenReadSdoAsync(attempt->nodeId, 0x1018, 4, attempt,
+                            onStandardSerialNumberResponse,
+                            onStandardSerialNumberError);
+    }
 }
 
 static void onDiscoverNodeError(un8 nodeId, void *context) {
@@ -147,7 +203,9 @@ void nodesEmcyHandler(void *context, un8 nodeId, VeRawCanMsg *message) {
 
     node = &nodes[nodeId - 1];
     if (node->connected) {
-        node->device->driver->onEMCYMessage(node, message);
+        if (node->device->driver->onEMCYMessage != NULL) {
+            node->device->driver->onEMCYMessage(node, message);
+        }
     }
     warning("Unhandled EMCY message from node %u", nodeId);
 }

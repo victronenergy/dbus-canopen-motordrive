@@ -17,7 +17,7 @@ typedef struct _Device {
 
     char identifier[64];
     sn32 deviceInstance;
-    un32 serialNumber;
+    char serialNumber[16];
 
     VeItem *root;
     VeItem *voltage;
@@ -28,6 +28,7 @@ typedef struct _Device {
     VeItem *motorTemperature;
     VeItem *motorTorque;
     VeItem *controllerTemperature;
+    VeItem *coolantTemperature;
     VeItem *motorDirectionInverted;
     VeItem *customName;
 
@@ -36,7 +37,7 @@ typedef struct _Device {
 } Device;
 
 void getDeviceDisplayName(Device *device, VeStr *out);
-void createDevice(Device *device, un8 nodeId, un32 serialNumber);
+void createDevice(Device *device, un8 nodeId, const char *serialNumber);
 void destroyDevice(Device *device);
 
 #endif

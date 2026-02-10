@@ -38,6 +38,7 @@ add_library(dbus-canopen-motordrive-lib
     ../src/drivers/sevcon.c
     ../src/drivers/curtis_e.c
     ../src/drivers/curtis_f.c
+    ../src/drivers/emsiso.c
     ../src/node.c
     ../src/servicemanager.c
     ../src/platform.c
@@ -101,6 +102,7 @@ add_executable(dbus-canopen-motordrive-test
     test_curtis_f.cpp
     test_curtis_e.cpp
     test_platform.cpp
+    test_emsiso.cpp
 )
 
 target_link_directories(dbus-canopen-motordrive-test PRIVATE
