@@ -371,9 +371,15 @@ void canOpenRx() {
                 info("CAN_RESPONSE");
                 logRawCanMessage(&message);
 
-                memcpy(pendingRequest->response.byte, response.byte,
-                       sizeof(response));
-                handleSdoResponse(iterator, pendingRequest);
+                if ((pendingRequest->type == READ_SEGMENTED_SDO &&
+                     *pendingRequest->segmented_length != 0) ||
+                    (response.index == pendingRequest->index &&
+                     response.subindex == pendingRequest->subindex)) {
+
+                    memcpy(pendingRequest->response.byte, response.byte,
+                           sizeof(response));
+                    handleSdoResponse(iterator, pendingRequest);
+                }
             }
         }
     }
