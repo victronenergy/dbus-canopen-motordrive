@@ -11,7 +11,7 @@
 #include <velib/types/ve_str.h>
 #include <velib/vecan/products.h>
 
-#define RPM_DEADBAND 3
+#define RPM_DEADBAND 25
 #define CURRENT_DEADBAND 0.1F
 
 typedef struct {

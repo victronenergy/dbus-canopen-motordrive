@@ -171,13 +171,14 @@ TEST_F(CurtisETest, readSuccess) {
 
     EXPECT_EQ(canOpenState.pendingSdoRequests->first, nullptr);
 
-    EXPECT_EQ(nodes[0].device->voltage->variant.value.Float, 52.5F);
-    EXPECT_EQ(nodes[0].device->current->variant.value.Float, 10.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->voltage->variant.value.Float, 52.5F);
+    EXPECT_FLOAT_EQ(nodes[0].device->current->variant.value.Float, 10.0F);
     EXPECT_EQ(nodes[0].device->power->variant.value.SN32, 525);
     EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 500);
-    EXPECT_EQ(nodes[0].device->motorTemperature->variant.value.Float, 25.0F);
-    EXPECT_EQ(nodes[0].device->controllerTemperature->variant.value.Float,
-              30.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->motorTemperature->variant.value.Float,
+                    25.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->controllerTemperature->variant.value.Float,
+                    30.0F);
     EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 2);
 }
 
@@ -406,6 +407,54 @@ TEST_F(CurtisETest, motorDirection) {
     EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 0);
     EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 0);
 
+    // 20 rpm, direction not inverted, motor not swapped, within deadband
+    nodes[0].device->driver->fastReadRoutine(&nodes[0]);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 1);
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x07, 0x32, 0x00, 0x14, 0x00, 0x00, 0x00}});
+    canOpenTx();
+    canOpenRx();
+    EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 0);
+    EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 0);
+
+    // -20 rpm, direction not inverted, motor not swapped, within deadband
+    nodes[0].device->driver->fastReadRoutine(&nodes[0]);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 1);
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x07, 0x32, 0x00, 0xEC, 0xFF, 0x00, 0x00}});
+    canOpenTx();
+    canOpenRx();
+    EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 0);
+    EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 0);
+
+    // 25 rpm, direction not inverted, motor not swapped, just out of deadband
+    nodes[0].device->driver->fastReadRoutine(&nodes[0]);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 1);
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x07, 0x32, 0x00, 0x19, 0x00, 0x00, 0x00}});
+    canOpenTx();
+    canOpenRx();
+    EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 25);
+    EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 2);
+
+    // -25 rpm, direction not inverted, motor not swapped, just out of deadband
+    nodes[0].device->driver->fastReadRoutine(&nodes[0]);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 1);
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x07, 0x32, 0x00, 0xE7, 0xFF, 0x00, 0x00}});
+    canOpenTx();
+    canOpenRx();
+    EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 25);
+    EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 1);
+
     // 500 rpm, direction inverted, motor not swapped
     nodes[0].device->driver->fastReadRoutine(&nodes[0]);
     EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 1);
@@ -528,13 +577,14 @@ TEST_F(CurtisETest, currentDeadband) {
     EXPECT_EQ(this->canMsgSentLog.size(), 6);
     EXPECT_EQ(canOpenState.pendingSdoRequests->first, nullptr);
 
-    EXPECT_EQ(nodes[0].device->voltage->variant.value.Float, 52.5F);
-    EXPECT_EQ(nodes[0].device->current->variant.value.Float, 0.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->voltage->variant.value.Float, 52.5F);
+    EXPECT_FLOAT_EQ(nodes[0].device->current->variant.value.Float, 0.0F);
     EXPECT_EQ(nodes[0].device->power->variant.value.SN32, 0);
     EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 500);
-    EXPECT_EQ(nodes[0].device->motorTemperature->variant.value.Float, 25.0F);
-    EXPECT_EQ(nodes[0].device->controllerTemperature->variant.value.Float,
-              30.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->motorTemperature->variant.value.Float,
+                    25.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->controllerTemperature->variant.value.Float,
+                    30.0F);
     EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 2);
 }
 
@@ -616,13 +666,14 @@ TEST_F(CurtisETest, currentNegative) {
     EXPECT_EQ(this->canMsgSentLog.size(), 6);
     EXPECT_EQ(canOpenState.pendingSdoRequests->first, nullptr);
 
-    EXPECT_EQ(nodes[0].device->voltage->variant.value.Float, 52.5F);
-    EXPECT_EQ(nodes[0].device->current->variant.value.Float, -10.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->voltage->variant.value.Float, 52.5F);
+    EXPECT_FLOAT_EQ(nodes[0].device->current->variant.value.Float, -10.0F);
     EXPECT_EQ(nodes[0].device->power->variant.value.SN32, -525);
     EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 500);
-    EXPECT_EQ(nodes[0].device->motorTemperature->variant.value.Float, 25.0F);
-    EXPECT_EQ(nodes[0].device->controllerTemperature->variant.value.Float,
-              30.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->motorTemperature->variant.value.Float,
+                    25.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->controllerTemperature->variant.value.Float,
+                    30.0F);
     EXPECT_EQ(nodes[0].device->motorDirection->variant.value.UN8, 2);
 }
 
