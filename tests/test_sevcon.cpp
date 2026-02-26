@@ -152,8 +152,8 @@ TEST_F(SevconTest, readSuccess) {
 
     EXPECT_EQ(canOpenState.pendingSdoRequests->first, nullptr);
 
-    EXPECT_EQ(nodes[0].device->voltage->variant.value.Float, 52.5F);
-    EXPECT_EQ(nodes[0].device->current->variant.value.Float, 10.0F);
+    EXPECT_FLOAT_EQ(nodes[0].device->voltage->variant.value.Float, 52.5F);
+    EXPECT_FLOAT_EQ(nodes[0].device->current->variant.value.Float, 10.0F);
     EXPECT_EQ(nodes[0].device->power->variant.value.SN32, 525);
     EXPECT_EQ(nodes[0].device->motorRpm->variant.value.UN16, 500);
     EXPECT_EQ(nodes[0].device->motorTemperature->variant.value.SN16, 25);

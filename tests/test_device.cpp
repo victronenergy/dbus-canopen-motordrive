@@ -116,13 +116,13 @@ TEST_F(DeviceTest, init) {
     EXPECT_STREQ(debug, "/Fake_Gateway_DummyDriver_12345678/Dc/0/Voltage");
     veItemLocalValue(device.voltage, &v);
     EXPECT_EQ(v.type.tp, VE_FLOAT);
-    EXPECT_EQ(v.value.Float, 0.0f);
+    EXPECT_FLOAT_EQ(v.value.Float, 0.0f);
 
     veItemUid(device.current, debug, sizeof(debug));
     EXPECT_STREQ(debug, "/Fake_Gateway_DummyDriver_12345678/Dc/0/Current");
     veItemLocalValue(device.current, &v);
     EXPECT_EQ(v.type.tp, VE_FLOAT);
-    EXPECT_EQ(v.value.Float, 0.0f);
+    EXPECT_FLOAT_EQ(v.value.Float, 0.0f);
 
     veItemUid(device.power, debug, sizeof(debug));
     EXPECT_STREQ(debug, "/Fake_Gateway_DummyDriver_12345678/Dc/0/Power");
