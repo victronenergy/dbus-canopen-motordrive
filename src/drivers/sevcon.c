@@ -151,7 +151,7 @@ static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
         return;
     }
 
-    voltage = request->response.data * 0.0625F;
+    voltage = ((un16)request->response.data) * 0.0625F;
 
     veItemOwnerSet(node->device->voltage, veVariantFloat(&v, voltage));
     veItemLocalValue(node->device->current, &v);
@@ -218,7 +218,7 @@ static void onMotorTemperatureResponse(CanOpenPendingSdoRequest *request) {
     }
 
     veItemOwnerSet(node->device->motorTemperature,
-                   veVariantSn16(&v, (sn16)request->response.data));
+                   veVariantSn16(&v, request->response.data));
 }
 
 static void onMotorTorqueResponse(CanOpenPendingSdoRequest *request) {
@@ -231,7 +231,7 @@ static void onMotorTorqueResponse(CanOpenPendingSdoRequest *request) {
     }
 
     veItemOwnerSet(node->device->motorTorque,
-                   veVariantUn16(&v, request->response.data));
+                   veVariantSn16(&v, request->response.data));
 }
 
 static void onControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
@@ -244,7 +244,7 @@ static void onControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
     }
 
     veItemOwnerSet(node->device->controllerTemperature,
-                   veVariantSn16(&v, (sn16)request->response.data));
+                   veVariantSn8(&v, request->response.data));
 }
 
 static void onError(CanOpenPendingSdoRequest *request, CanOpenError error) {
