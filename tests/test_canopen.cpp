@@ -30,6 +30,7 @@ class CanopenTest : public CanFixture {
         CanFixture::SetUp();
         RESET_FAKE(testCallback);
         RESET_FAKE(testErrorCallback);
+        RESET_FAKE(testEMCYCallback);
 
         testCallback_fake.custom_fake = testCallbackLocal;
 
@@ -669,4 +670,22 @@ TEST_F(CanopenTest, emcyHandler) {
     EXPECT_EQ(testEMCYCallback_fake.call_count, 1);
     EXPECT_EQ(testEMCYCallback_fake.arg0_val, nullptr);
     EXPECT_EQ(testEMCYCallback_fake.arg1_val, 1);
+}
+
+TEST_F(CanopenTest, emcyHandlerNodeZero) {
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x080,
+         .length = 8,
+         .mdata = {0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    canOpenRegisterEmcyHandler(testEMCYCallback, NULL);
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x080,
+         .length = 8,
+         .mdata = {0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testEMCYCallback_fake.call_count, 0);
 }

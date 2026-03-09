@@ -357,7 +357,7 @@ void canOpenRx() {
 
         if ((message.canId & 0xFFFFFF80) == 0x80) {
             node = message.canId & 0x7F;
-            if (canOpenState.emcyHandler != NULL) {
+            if (node != 0 && canOpenState.emcyHandler != NULL) {
                 canOpenState.emcyHandler(canOpenState.emcyHandlerContext, node,
                                          &message);
             }
