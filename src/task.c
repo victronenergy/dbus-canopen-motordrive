@@ -2,7 +2,6 @@
 #include <localsettings.h>
 #include <logger.h>
 #include <node.h>
-#include <platform.h>
 #include <servicemanager.h>
 #include <velib/canhw/canhw_driver.h>
 #include <velib/utils/ve_timer.h>
@@ -51,7 +50,6 @@ void taskInit(void) {
     canOpenRegisterEmcyHandler(nodesEmcyHandler, NULL);
     connectToDefaultDbus();
     localSettingsInit();
-    platformInit();
     serviceManagerInit();
 
     taskConnect();

@@ -3,7 +3,7 @@
 #include <localsettings.h>
 #include <logger.h>
 #include <node.h>
-#include <platform.h>
+#include <notification.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <velib/vecan/products.h>

@@ -19,6 +19,8 @@ DEFINE_FAKE_VALUE_FUNC0(un16, pltGetCount1ms);
 DEFINE_FAKE_VALUE_FUNC3(struct VeRemoteService *, veDbusAddRemoteService,
                         char const *, struct VeItem *, veBool);
 DEFINE_FAKE_VALUE_FUNC0(struct VeItem *, veValueTree);
+DEFINE_FAKE_VOID_FUNC3(injectPlatformNotification, NotificationType,
+                       char const *, char const *);
 }
 
 static VeCanGateway fakeVeCanGatewayInstance;

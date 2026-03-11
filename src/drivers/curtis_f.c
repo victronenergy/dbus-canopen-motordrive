@@ -4,7 +4,7 @@
 #include <logger.h>
 #include <memory.h>
 #include <node.h>
-#include <platform.h>
+#include <notification.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

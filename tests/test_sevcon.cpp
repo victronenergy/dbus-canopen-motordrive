@@ -7,22 +7,22 @@ extern "C" {
 #include "servicemanager.h"
 }
 
-FAKE_VALUE_FUNC3(veBool, testSevconSetter, struct VeItem *, void *,
-                 VeVariant *);
-static char payload[1024];
-static veBool testSevconSetterLocal(struct VeItem *item, void *context,
-                                    VeVariant *v) {
-    strcpy(payload, (const char *)v->value.CPtr);
-    return veTrue;
+static char lastTitle[1024];
+static char lastDescription[1024];
+static void injectPlatformNotificationLocal(NotificationType type,
+                                            char const *title,
+                                            char const *description) {
+    strncpy(lastTitle, title, sizeof(lastTitle));
+    strncpy(lastDescription, description, sizeof(lastDescription));
 }
 
 class SevconTest : public CanFixture {
   protected:
     void SetUp() override {
         CanFixture::SetUp();
-        RESET_FAKE(testSevconSetter);
 
-        testSevconSetter_fake.custom_fake = testSevconSetterLocal;
+        injectPlatformNotification_fake.custom_fake =
+            injectPlatformNotificationLocal;
 
         canOpenInit();
         nodesInit();
@@ -396,12 +396,8 @@ TEST_F(SevconTest, emcyMessage) {
     VeRawCanMsg message;
     VeItem *item;
 
-    item = veItemGetOrCreateUid(
-        veValueTree(), "com.victronenergy.platform/Notifications/Inject");
-    EXPECT_NE(item, nullptr);
     canOpenRegisterEmcyHandler(nodesEmcyHandler, NULL);
-    veItemSetSetter(item, testSevconSetter, NULL);
-    EXPECT_EQ(testSevconSetter_fake.call_count, 0);
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     EXPECT_EQ(nodes[0].connected, veFalse);
     connectToNode(1);
@@ -429,7 +425,7 @@ TEST_F(SevconTest, emcyMessage) {
          .mdata = {0x10, 0x00, 0x00, 0x11, 0x11, 0x02, 0x00, 0x00}});
     canOpenRx();
 
-    EXPECT_EQ(testSevconSetter_fake.call_count, 0);
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     // Motor Overcurrent Fault (data = 0)
     this->canMsgReadQueue.push_back(
@@ -438,7 +434,7 @@ TEST_F(SevconTest, emcyMessage) {
          .mdata = {0x10, 0x00, 0x00, 0xC2, 0x52, 0x00, 0x00, 0x00}});
     canOpenRx();
 
-    EXPECT_EQ(testSevconSetter_fake.call_count, 0);
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     // Motor Overcurrent Fault
     this->canMsgReadQueue.push_back(
@@ -447,7 +443,9 @@ TEST_F(SevconTest, emcyMessage) {
          .mdata = {0x10, 0x00, 0x00, 0xC2, 0x52, 0x02, 0x00, 0x00}});
     canOpenRx();
 
-    EXPECT_EQ(testSevconSetter_fake.call_count, 1);
-    EXPECT_STREQ(payload,
-                 "1\tSevcon motor controller [1]\tMotor Overcurrent Fault");
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 1);
+    EXPECT_EQ(injectPlatformNotification_fake.arg0_val,
+              NOTIFICATION_TYPE_ERROR);
+    EXPECT_STREQ(lastTitle, "Motor Overcurrent Fault");
+    EXPECT_STREQ(lastDescription, "Sevcon motor controller [1]");
 }

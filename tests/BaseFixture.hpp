@@ -40,6 +40,7 @@ class BaseFixture : public ::testing::Test {
         veDbusAddRemoteService_fake.return_val = &fakeRemoteService;
         RESET_FAKE(veValueTree);
         veValueTree_fake.return_val = &fakeRoot;
+        RESET_FAKE(injectPlatformNotification);
     }
 
     void TearDown() override {}

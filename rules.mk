@@ -6,6 +6,7 @@ INSTALL_BIN += $T
 
 SUBDIRS += velib
 INCLUDES += velib/inc
+INCLUDES += velib/src/types
 $T_DEPS += $(call subtree_tgts,$(d)/velib)
 
 

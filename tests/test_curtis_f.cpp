@@ -7,22 +7,22 @@ extern "C" {
 #include "servicemanager.h"
 }
 
-FAKE_VALUE_FUNC3(veBool, testCurtisFSetter, struct VeItem *, void *,
-                 VeVariant *);
-static char payload[1024];
-static veBool testCurtisFSetterLocal(struct VeItem *item, void *context,
-                                     VeVariant *v) {
-    strcpy(payload, (const char *)v->value.CPtr);
-    return veTrue;
+static char lastTitle[1024];
+static char lastDescription[1024];
+static void injectPlatformNotificationLocal(NotificationType type,
+                                            char const *title,
+                                            char const *description) {
+    strncpy(lastTitle, title, sizeof(lastTitle));
+    strncpy(lastDescription, description, sizeof(lastDescription));
 }
 
 class CurtisFTest : public CanFixture {
   protected:
     void SetUp() override {
         CanFixture::SetUp();
-        RESET_FAKE(testCurtisFSetter);
 
-        testCurtisFSetter_fake.custom_fake = testCurtisFSetterLocal;
+        injectPlatformNotification_fake.custom_fake =
+            injectPlatformNotificationLocal;
 
         canOpenInit();
         nodesInit();
@@ -495,12 +495,8 @@ TEST_F(CurtisFTest, emcyMessage) {
     VeItem *item;
     VeVariant v;
 
-    item = veItemGetOrCreateUid(
-        veValueTree(), "com.victronenergy.platform/Notifications/Inject");
-    EXPECT_NE(item, nullptr);
     canOpenRegisterEmcyHandler(nodesEmcyHandler, NULL);
-    veItemSetSetter(item, testCurtisFSetter, NULL);
-    EXPECT_EQ(testCurtisFSetter_fake.call_count, 0);
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     // error
     this->canMsgReadQueue.push_back(
@@ -510,7 +506,7 @@ TEST_F(CurtisFTest, emcyMessage) {
     canOpenRx();
 
     // Ignore error node isn't connected
-    EXPECT_EQ(testCurtisFSetter_fake.call_count, 0);
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     EXPECT_EQ(nodes[0].connected, veFalse);
     connectToNode(1);
@@ -537,7 +533,7 @@ TEST_F(CurtisFTest, emcyMessage) {
          .mdata = {0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}});
     canOpenRx();
 
-    EXPECT_EQ(testCurtisFSetter_fake.call_count, 0);
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     // Overcurrent error
     this->canMsgReadQueue.push_back(
@@ -546,9 +542,11 @@ TEST_F(CurtisFTest, emcyMessage) {
          .mdata = {0x12, 0xFF, 0x01, 0x10, 0x25, 0x01, 0x00, 0x00}});
     canOpenRx();
 
-    EXPECT_EQ(testCurtisFSetter_fake.call_count, 1);
-    EXPECT_STREQ(payload, "1\tCurtis motor controller [1]\tController "
-                          "Overcurrent (fault type: 1)");
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 1);
+    EXPECT_EQ(injectPlatformNotification_fake.arg0_val,
+              NOTIFICATION_TYPE_ERROR);
+    EXPECT_STREQ(lastTitle, "Controller Overcurrent (fault type: 1)");
+    EXPECT_STREQ(lastDescription, "Curtis motor controller [1]");
 
     veVariantStr(&v, "My Curtis Controller");
     veItemOwnerSet(nodes[0].device->customName, &v);
@@ -560,7 +558,10 @@ TEST_F(CurtisFTest, emcyMessage) {
          .mdata = {0x12, 0xFF, 0x01, 0x11, 0x25, 0x01, 0x00, 0x00}});
     canOpenRx();
 
-    EXPECT_EQ(testCurtisFSetter_fake.call_count, 2);
-    EXPECT_STREQ(payload, "1\tMy Curtis Controller\tUnknown Error 0xFF12 "
-                          "Record 0x2511 (fault type: 1)");
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
+    EXPECT_EQ(injectPlatformNotification_fake.arg0_val,
+              NOTIFICATION_TYPE_ERROR);
+    EXPECT_STREQ(lastTitle,
+                 "Unknown Error 0xFF12 Record 0x2511 (fault type: 1)");
+    EXPECT_STREQ(lastDescription, "My Curtis Controller");
 }

@@ -4,6 +4,7 @@
 #include "fff.h"
 
 extern "C" {
+#include "notification.h"
 #include <dbus/dbus.h>
 #include <ve_dbus_internal.h>
 #include <velib/base/types.h>
@@ -29,6 +30,8 @@ DECLARE_FAKE_VALUE_FUNC0(un16, pltGetCount1ms);
 DECLARE_FAKE_VALUE_FUNC3(struct VeRemoteService *, veDbusAddRemoteService,
                          char const *, struct VeItem *, veBool);
 DECLARE_FAKE_VALUE_FUNC0(struct VeItem *, veValueTree);
+DECLARE_FAKE_VOID_FUNC3(injectPlatformNotification, NotificationType,
+                        char const *, char const *);
 }
 
 extern "C" {
