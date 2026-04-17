@@ -9,12 +9,9 @@
 
 Node nodes[127];
 
-static void
-onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
-    ConnectionAttempt *attempt;
+static void finalizeConnection(ConnectionAttempt *attempt, un32 serialNumber) {
     Node *node;
 
-    attempt = (ConnectionAttempt *)request->context;
     node = &nodes[attempt->nodeId - 1];
     node->device = _malloc(sizeof(*node->device));
     if (!node->device) {
@@ -23,7 +20,7 @@ onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
     }
     node->device->driver = attempt->driver;
 
-    createDevice(node->device, attempt->nodeId, request->response.data);
+    createDevice(node->device, attempt->nodeId, serialNumber);
     node->connected = veTrue;
     if (node->device->driver->createDriverContext != NULL) {
         node->device->driverContext =
@@ -32,11 +29,37 @@ onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
     _free(attempt);
 }
 
+static void
+onControllerSerialNumberResponse(CanOpenPendingSdoRequest *request) {
+    finalizeConnection((ConnectionAttempt *)request->context,
+                       request->response.data);
+}
+
+static veBool
+shouldFallbackToNodeIdForSerialNumber(CanOpenPendingSdoRequest *request,
+                                      CanOpenError error) {
+    if (error != SDO_READ_ERROR) {
+        return veFalse;
+    }
+    if (request->response.control != SDO_ABORT_CONTROL) {
+        return veFalse;
+    }
+    return request->response.data == SDO_ABORT_NO_OBJECT ||
+           request->response.data == SDO_ABORT_NO_SUB_INDEX;
+}
+
 static void onControllerSerialNumberError(CanOpenPendingSdoRequest *request,
                                           CanOpenError error) {
     ConnectionAttempt *attempt;
 
     attempt = (ConnectionAttempt *)request->context;
+    if (shouldFallbackToNodeIdForSerialNumber(request, error)) {
+        // SDO 0x1018.04 (serial number) is not supported by node.
+        // Falling back to using CANopen node ID.
+        finalizeConnection(attempt, attempt->nodeId);
+        return;
+    }
+
     _free(attempt);
 }
 
