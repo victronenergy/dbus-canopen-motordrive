@@ -139,6 +139,134 @@ TEST_F(NodeTest, connectToNodeSuccessCurtisF) {
     EXPECT_EQ(nodes[0].connected, veFalse);
 }
 
+TEST_F(NodeTest, connectToNodeSuccessSevconWithoutSerialNumber) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x80, 0x18, 0x10, 0x04, 0x00, 0x00, 0x02, 0x06}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veTrue);
+    ASSERT_NE(nodes[0].device, nullptr);
+    EXPECT_EQ(nodes[0].device->serialNumber, 1);
+
+    disconnectFromNode(1);
+
+    EXPECT_EQ(nodes[0].connected, veFalse);
+}
+
+TEST_F(NodeTest, connectToNodeSuccessCurtisFWithoutSerialNumber) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x41, 0x43, 0x20, 0x46}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x80, 0x18, 0x10, 0x04, 0x11, 0x00, 0x09, 0x06}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veTrue);
+    ASSERT_NE(nodes[0].device, nullptr);
+    EXPECT_EQ(nodes[0].device->serialNumber, 1);
+
+    disconnectFromNode(1);
+
+    EXPECT_EQ(nodes[0].connected, veFalse);
+}
+
+TEST_F(NodeTest, connectToNodeSerialNumberInvalidControl) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x10, 0x18, 0x10, 0x04, 0x11, 0x00, 0x09, 0x06}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veFalse);
+}
+
+TEST_F(NodeTest, connectToNodeSerialNumberGeneralError) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x80, 0x18, 0x10, 0x04, 0x00, 0x00, 0x00, 0x08}});
+    canOpenRx();
+
+    EXPECT_EQ(nodes[0].connected, veFalse);
+}
+
+TEST_F(NodeTest, connectToNodeWithoutSerialNumberDeviceMallocFailure) {
+    EXPECT_EQ(nodes[0].connected, veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x80, 0x18, 0x10, 0x04, 0x00, 0x00, 0x02, 0x06}});
+    _malloc_fake.custom_fake = NULL;
+    _malloc_fake.return_val = NULL;
+
+    ASSERT_EXIT(canOpenRx();, ::testing::ExitedWithCode(5), "");
+}
+
 TEST_F(NodeTest, disconnectFromNodeNotConnected) {
     EXPECT_EQ(nodes[0].connected, veFalse);
 
