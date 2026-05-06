@@ -96,10 +96,7 @@ void discoverNode(un8 nodeId, DiscoverNodeSuccessCallback onSuccess,
     DiscoveryContext *discoveryContext;
 
     discoveryContext = _malloc(sizeof(*discoveryContext));
-    if (!discoveryContext) {
-        error("malloc failed for discovery context"); // @todo
-        pltExit(5);
-    }
+    CHECK_ALLOC(discoveryContext);
 
     discoveryContext->nodeId = nodeId;
     discoveryContext->onSuccess = onSuccess;

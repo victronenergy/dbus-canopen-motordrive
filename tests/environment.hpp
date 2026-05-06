@@ -17,6 +17,7 @@ extern "C" {
 DECLARE_FAKE_VALUE_FUNC1(void *, _malloc, size_t);
 DECLARE_FAKE_VALUE_FUNC2(void *, _realloc, void *, size_t);
 DECLARE_FAKE_VOID_FUNC1(_free, void *);
+DECLARE_FAKE_VALUE_FUNC1(char *, _strdup, const char *);
 
 DECLARE_FAKE_VALUE_FUNC1(struct VeDbus *, veDbusConnectString, char const *);
 DECLARE_FAKE_VALUE_FUNC0(struct VeDbus *, veDbusGetDefaultBus);

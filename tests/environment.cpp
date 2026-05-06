@@ -6,6 +6,7 @@ extern "C" {
 DEFINE_FAKE_VALUE_FUNC1(void *, _malloc, size_t);
 DEFINE_FAKE_VALUE_FUNC2(void *, _realloc, void *, size_t);
 DEFINE_FAKE_VOID_FUNC1(_free, void *);
+DEFINE_FAKE_VALUE_FUNC1(char *, _strdup, const char *);
 
 DEFINE_FAKE_VALUE_FUNC1(struct VeDbus *, veDbusConnectString, char const *);
 DEFINE_FAKE_VALUE_FUNC0(struct VeDbus *, veDbusGetDefaultBus);

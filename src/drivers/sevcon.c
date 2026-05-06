@@ -426,8 +426,8 @@ static void onEMCYMessage(Node *node, VeRawCanMsg *message) {
     snprintf(notificationTitle, sizeof(notificationTitle), "%s", error->error);
     error("EMCY from node %d: %s", node->device->nodeId, notificationTitle);
     getDeviceDisplayName(node->device, &deviceName);
-    injectPlatformNotification(NOTIFICATION_TYPE_ERROR, notificationTitle,
-                               veStrCStr(&deviceName));
+    queueNotification(node->device->nodeId, NOTIFICATION_TYPE_ERROR,
+                      notificationTitle, veStrCStr(&deviceName));
     veStrFree(&deviceName);
 }
 

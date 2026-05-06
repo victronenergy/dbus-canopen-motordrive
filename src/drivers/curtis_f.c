@@ -330,10 +330,7 @@ static void *createDriverContext(Node *node) {
     CurtisFContext *context;
 
     context = _malloc(sizeof(*context));
-    if (!context) {
-        error("malloc failed for CurtisFContext");
-        pltExit(5);
-    }
+    CHECK_ALLOC(context);
 
     context->swapMotorDirection = -1;
 
@@ -371,8 +368,8 @@ static void onEMCYMessage(Node *node, VeRawCanMsg *message) {
 
     error("EMCY from node %d: %s", node->device->nodeId, notificationTitle);
     getDeviceDisplayName(node->device, &deviceName);
-    injectPlatformNotification(NOTIFICATION_TYPE_ERROR, notificationTitle,
-                               veStrCStr(&deviceName));
+    queueNotification(node->device->nodeId, NOTIFICATION_TYPE_ERROR,
+                      notificationTitle, veStrCStr(&deviceName));
     veStrFree(&deviceName);
 }
 

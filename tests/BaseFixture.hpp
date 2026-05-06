@@ -17,10 +17,12 @@ class BaseFixture : public ::testing::Test {
         RESET_FAKE(_malloc);
         RESET_FAKE(_realloc);
         RESET_FAKE(_free);
+        RESET_FAKE(_strdup);
 
         _malloc_fake.custom_fake = malloc;
         _realloc_fake.custom_fake = realloc;
         _free_fake.custom_fake = free;
+        _strdup_fake.custom_fake = strdup;
 
         RESET_FAKE(veDbusConnectString);
         veDbusConnectString_fake.return_val = &fakeDbusInstance;

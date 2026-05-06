@@ -14,10 +14,7 @@ static void finalizeConnection(ConnectionAttempt *attempt, un32 serialNumber) {
 
     node = &nodes[attempt->nodeId - 1];
     node->device = _malloc(sizeof(*node->device));
-    if (!node->device) {
-        error("malloc failed for node device");
-        pltExit(5);
-    }
+    CHECK_ALLOC(node->device);
     node->device->driver = attempt->driver;
 
     createDevice(node->device, attempt->nodeId, serialNumber);
@@ -85,10 +82,7 @@ void connectToNode(un8 nodeId) {
     ConnectionAttempt *attempt;
 
     attempt = _malloc(sizeof(*attempt));
-    if (!attempt) {
-        error("malloc failed for ConnectionAttempt");
-        pltExit(5);
-    }
+    CHECK_ALLOC(attempt);
 
     attempt->nodeId = nodeId;
     attempt->length = 0;
@@ -177,3 +171,10 @@ void nodesEmcyHandler(void *context, un8 nodeId, VeRawCanMsg *message) {
 }
 
 void nodesInit() { memset(nodes, 0, sizeof(nodes)); }
+
+veBool isNodeConnected(un8 nodeId) {
+    if (nodeId == 0 || nodeId > 127) {
+        return veFalse;
+    }
+    return nodes[nodeId - 1].connected;
+}

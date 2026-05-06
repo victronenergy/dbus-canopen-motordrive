@@ -1,1 +1,12 @@
-SRCS += task.c canopen.c device.c localsettings.c servicemanager.c array.c node.c list.c memory.c discovery.c notification.c
+SRCS += task.c
+SRCS += canopen.c
+SRCS += device.c
+SRCS += localsettings.c
+SRCS += servicemanager.c
+SRCS += array.c
+SRCS += node.c
+SRCS += list.c
+SRCS += memory.c
+SRCS += discovery.c
+SRCS += notification.c
+SRCS += platform.c

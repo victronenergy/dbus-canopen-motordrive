@@ -1,34 +1,65 @@
-#include <dbus/dbus.h>
+#include <list.h>
+#include <logger.h>
+#include <memory.h>
+#include <node.h>
 #include <notification.h>
-#include <ve_dbus_internal.h>
-#include <velib/types/ve_dbus_item.h>
+#include <platform.h>
+#include <string.h>
+#include <velib/utils/ve_timer.h>
 
-void injectPlatformNotification(NotificationType type, const char *title,
-                                const char *description) {
-    DBusMessage *msg;
-    DBusMessageIter itt;
-    char payload[1024];
-    VeVariant v;
+/**
+ * The Curtis E/SE controller tends to trigger EMCY messages right as it is
+ * shutting down. To avoid showing notifications for these messages, we will
+ * delay the injection of notifications by 1 second, and check if the node is
+ * still connected before injecting the notification.
+ */
+#define NOTIFICATION_INJECTION_DELAY_MS 1000
 
-    struct VeDbus *dbus = veDbusGetDefaultBus();
-    if (dbus == NULL) {
-        return;
+static List *pendingNotifications;
+
+void notificationsInit() { pendingNotifications = listCreate(); }
+
+void queueNotification(un8 nodeId, NotificationType type, const char *title,
+                       const char *description) {
+    PendingNotification *notification;
+
+    notification = _malloc(sizeof(PendingNotification));
+    CHECK_ALLOC(notification);
+
+    notification->nodeId = nodeId;
+    notification->type = type;
+    notification->title = _strdup(title);
+    CHECK_ALLOC(notification->title);
+    notification->description = _strdup(description);
+    CHECK_ALLOC(notification->description);
+    notification->timeout = pltGetCount1ms();
+
+    listAdd(pendingNotifications, notification);
+}
+
+void processPendingNotifications() {
+    ListItem *item = pendingNotifications->first;
+    while (item) {
+        ListItem *next = item->next;
+        PendingNotification *notification = (PendingNotification *)item->data;
+        if (veTick1ms(&notification->timeout,
+                      NOTIFICATION_INJECTION_DELAY_MS)) {
+
+            if (isNodeConnected(notification->nodeId)) {
+                injectPlatformNotification(notification->type,
+                                           notification->title,
+                                           notification->description);
+            } else {
+                warning("Ignoring notification for node %u since it is not "
+                        "connected",
+                        notification->nodeId);
+            }
+
+            _free(notification->title);
+            _free(notification->description);
+            _free(notification);
+            listRemove(pendingNotifications, item);
+        }
+        item = next;
     }
-
-    snprintf(payload, sizeof(payload), "%u\t%s\t%s", type, description, title);
-    veVariantHeapStr(&v, payload);
-
-    msg = dbus_message_new_method_call("com.victronenergy.platform",
-                                       "/Notifications/Inject",
-                                       "com.victronenergy.BusItem", "SetValue");
-    if (!msg) {
-        return;
-    }
-
-    dbus_message_iter_init_append(msg, &itt);
-    veDbusMsgAppendVeVariant(&itt, &v);
-    veDbusSend(dbus->service.conn, msg);
-
-    dbus_message_unref(msg);
-    veVariantFree(&v);
 }

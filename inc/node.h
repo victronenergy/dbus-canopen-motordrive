@@ -26,6 +26,7 @@ void readFromConnectedNodes(veBool fast);
 void nodesTick();
 void nodesInit();
 void nodesEmcyHandler(void *context, un8 nodeId, VeRawCanMsg *message);
+veBool isNodeConnected(un8 nodeId);
 
 extern Node nodes[127];
 

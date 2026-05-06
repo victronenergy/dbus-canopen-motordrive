@@ -26,6 +26,7 @@ class CurtisFTest : public CanFixture {
 
         canOpenInit();
         nodesInit();
+        notificationsInit();
     }
 
     void TearDown() override {
@@ -533,6 +534,9 @@ TEST_F(CurtisFTest, emcyMessage) {
          .mdata = {0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}});
     canOpenRx();
 
+    pltGetCount1ms_fake.return_val += 1000;
+    processPendingNotifications();
+
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     // Overcurrent error
@@ -541,6 +545,14 @@ TEST_F(CurtisFTest, emcyMessage) {
          .length = 8,
          .mdata = {0x12, 0xFF, 0x01, 0x10, 0x25, 0x01, 0x00, 0x00}});
     canOpenRx();
+
+    pltGetCount1ms_fake.return_val += 999;
+    processPendingNotifications();
+
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
+
+    pltGetCount1ms_fake.return_val += 1;
+    processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 1);
     EXPECT_EQ(injectPlatformNotification_fake.arg0_val,
@@ -557,6 +569,9 @@ TEST_F(CurtisFTest, emcyMessage) {
          .length = 8,
          .mdata = {0x12, 0xFF, 0x01, 0x11, 0x25, 0x01, 0x00, 0x00}});
     canOpenRx();
+
+    pltGetCount1ms_fake.return_val += 1000;
+    processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
     EXPECT_EQ(injectPlatformNotification_fake.arg0_val,

@@ -542,3 +542,28 @@ TEST_F(NodeTest, readFromConnectedNodesTimeout) {
 
     EXPECT_EQ(nodes[0].connected, veFalse);
 }
+
+TEST_F(NodeTest, isNodeConnected) {
+    EXPECT_EQ(isNodeConnected(0), veFalse);
+    EXPECT_EQ(isNodeConnected(128), veFalse);
+    EXPECT_EQ(isNodeConnected(1), veFalse);
+
+    connectToNode(1);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x08, 0x10, 0x00, 0x47, 0x65, 0x6E, 0x34}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x42, 0x18, 0x10, 0x04, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(isNodeConnected(1), veTrue);
+}

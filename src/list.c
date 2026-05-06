@@ -8,10 +8,7 @@ List *listCreate() {
     List *list;
 
     list = _malloc(sizeof(List));
-    if (list == NULL) {
-        error("failed to allocate memory for List");
-        pltExit(5);
-    }
+    CHECK_ALLOC(list);
     list->first = NULL;
     list->last = NULL;
     return list;
@@ -34,10 +31,7 @@ void listAdd(List *list, void *data) {
     }
 
     newItem = _malloc(sizeof(ListItem));
-    if (newItem == NULL) {
-        error("failed to allocate memory for ListItem");
-        pltExit(5);
-    }
+    CHECK_ALLOC(newItem);
 
     newItem->data = data;
     newItem->next = NULL;

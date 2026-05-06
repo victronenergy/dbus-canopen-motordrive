@@ -17,10 +17,7 @@ void un8ArrayAdd(Un8Array *array, un8 nodeId) {
         array->capacity = array->capacity ? array->capacity * 2 : 4;
         array->data =
             _realloc(array->data, array->capacity * sizeof(*array->data));
-        if (!array->data) {
-            error("failed to allocate memory for Un8Array");
-            pltExit(5);
-        }
+        CHECK_ALLOC(array->data);
     }
     array->data[array->count] = nodeId;
     array->count += 1;
@@ -41,10 +38,7 @@ void un8ArraySerialize(const Un8Array *array, VeItem *item) {
 
     bufferSize = 4 * array->count + 1;
     result = _malloc(bufferSize);
-    if (result == NULL) {
-        error("failed to allocate memory for serialization");
-        pltExit(5);
-    }
+    CHECK_ALLOC(result);
     result[0] = '\0';
 
     for (size_t i = 0; i < array->count; ++i) {

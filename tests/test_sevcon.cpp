@@ -26,6 +26,7 @@ class SevconTest : public CanFixture {
 
         canOpenInit();
         nodesInit();
+        notificationsInit();
     }
 
     void TearDown() override {
@@ -425,6 +426,9 @@ TEST_F(SevconTest, emcyMessage) {
          .mdata = {0x10, 0x00, 0x00, 0x11, 0x11, 0x02, 0x00, 0x00}});
     canOpenRx();
 
+    pltGetCount1ms_fake.return_val += 1000;
+    processPendingNotifications();
+
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     // Motor Overcurrent Fault (data = 0)
@@ -434,6 +438,9 @@ TEST_F(SevconTest, emcyMessage) {
          .mdata = {0x10, 0x00, 0x00, 0xC2, 0x52, 0x00, 0x00, 0x00}});
     canOpenRx();
 
+    pltGetCount1ms_fake.return_val += 1000;
+    processPendingNotifications();
+
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     // Motor Overcurrent Fault
@@ -442,6 +449,14 @@ TEST_F(SevconTest, emcyMessage) {
          .length = 8,
          .mdata = {0x10, 0x00, 0x00, 0xC2, 0x52, 0x02, 0x00, 0x00}});
     canOpenRx();
+
+    pltGetCount1ms_fake.return_val += 999;
+    processPendingNotifications();
+
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
+
+    pltGetCount1ms_fake.return_val += 1;
+    processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 1);
     EXPECT_EQ(injectPlatformNotification_fake.arg0_val,

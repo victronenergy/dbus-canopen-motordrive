@@ -26,6 +26,7 @@ class CurtisETest : public CanFixture {
 
         canOpenInit();
         nodesInit();
+        notificationsInit();
     }
 
     void TearDown() override {
@@ -732,6 +733,21 @@ TEST_F(CurtisETest, emcyMessage) {
          .mdata = {0x00, 0x62, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}});
     canOpenRx();
 
+    pltGetCount1ms_fake.return_val += 1000;
+    processPendingNotifications();
+
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
+
+    // Overcurrent error, register = 0
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00}});
+    canOpenRx();
+
+    pltGetCount1ms_fake.return_val += 1000;
+    processPendingNotifications();
+
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
 
     // Overcurrent error
@@ -740,6 +756,14 @@ TEST_F(CurtisETest, emcyMessage) {
          .length = 8,
          .mdata = {0x00, 0x10, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00}});
     canOpenRx();
+
+    pltGetCount1ms_fake.return_val += 999;
+    processPendingNotifications();
+
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
+
+    pltGetCount1ms_fake.return_val += 1;
+    processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 1);
     EXPECT_EQ(injectPlatformNotification_fake.arg0_val,
@@ -758,9 +782,26 @@ TEST_F(CurtisETest, emcyMessage) {
          .mdata = {0x01, 0x10, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00}});
     canOpenRx();
 
+    pltGetCount1ms_fake.return_val += 1000;
+    processPendingNotifications();
+
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
     EXPECT_EQ(injectPlatformNotification_fake.arg0_val,
               NOTIFICATION_TYPE_ERROR);
     EXPECT_STREQ(lastTitle, "PMAC Commissioning Needed (Code 19)");
     EXPECT_STREQ(lastDescription, "Curtis motor controller [1]");
+
+    // PMAC Commisioning needed error
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x01, 0x10, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00}});
+    canOpenRx();
+    disconnectFromNode(1);
+
+    pltGetCount1ms_fake.return_val += 1000;
+    processPendingNotifications();
+
+    // Node is disconnected, so notification should be ignored
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
 }

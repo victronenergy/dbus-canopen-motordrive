@@ -2,6 +2,7 @@
 #include <localsettings.h>
 #include <logger.h>
 #include <node.h>
+#include <notification.h>
 #include <servicemanager.h>
 #include <velib/canhw/canhw_driver.h>
 #include <velib/utils/ve_timer.h>
@@ -46,6 +47,7 @@ void taskInit(void) {
     taskConnectLastUpdate = pltGetCount1ms();
 
     nodesInit();
+    notificationsInit();
     canOpenInit();
     canOpenRegisterEmcyHandler(nodesEmcyHandler, NULL);
     connectToDefaultDbus();
@@ -90,6 +92,8 @@ void taskTick(void) {
     if (veTick1ms(&taskConnectLastUpdate, TASK_CONNECT_DELAY_MS)) {
         taskConnect();
     }
+
+    processPendingNotifications();
 }
 
 char const *pltProgramVersion(void) { return VERSION; }

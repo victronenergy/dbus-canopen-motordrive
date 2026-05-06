@@ -256,10 +256,7 @@ static void *createDriverContext(Node *node) {
     CurtisEContext *context;
 
     context = _malloc(sizeof(*context));
-    if (!context) {
-        error("malloc failed for CurtisEContext");
-        pltExit(5);
-    }
+    CHECK_ALLOC(context);
 
     context->swapMotorDirection = -1;
 
@@ -270,6 +267,7 @@ static void destroyDriverContext(Node *node, void *context) { _free(context); }
 
 static void onEMCYMessage(Node *node, VeRawCanMsg *message) {
     un16 errorCategory;
+    un8 errorRegister;
     un8 statusRegisterStart;
     size_t errorDbSize;
     Error *errorEntry;
@@ -277,6 +275,11 @@ static void onEMCYMessage(Node *node, VeRawCanMsg *message) {
 
     errorDbSize = sizeof(errorDb) / sizeof(Error);
     errorCategory = message->mdata[0] | (message->mdata[1] << 8);
+    errorRegister = message->mdata[2];
+
+    if (errorRegister != 0x01) {
+        return;
+    }
 
     if (errorCategory == 0x1000) {
         statusRegisterStart = 1;
@@ -299,9 +302,8 @@ static void onEMCYMessage(Node *node, VeRawCanMsg *message) {
             error("EMCY from node %d: %s", node->device->nodeId,
                   errorEntry->error);
             getDeviceDisplayName(node->device, &deviceName);
-            injectPlatformNotification(NOTIFICATION_TYPE_ERROR,
-                                       errorEntry->error,
-                                       veStrCStr(&deviceName));
+            queueNotification(node->device->nodeId, NOTIFICATION_TYPE_ERROR,
+                              errorEntry->error, veStrCStr(&deviceName));
             veStrFree(&deviceName);
         }
     }
