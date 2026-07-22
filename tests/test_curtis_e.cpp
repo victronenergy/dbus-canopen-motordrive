@@ -4,6 +4,7 @@ extern "C" {
 #include "canopen.h"
 #include "drivers/curtis_e.h"
 #include "node.h"
+#include "notification.h"
 #include "servicemanager.h"
 }
 
@@ -733,7 +734,7 @@ TEST_F(CurtisETest, emcyMessage) {
          .mdata = {0x00, 0x62, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}});
     canOpenRx();
 
-    pltGetCount1ms_fake.return_val += 1000;
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
     processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
@@ -745,7 +746,7 @@ TEST_F(CurtisETest, emcyMessage) {
          .mdata = {0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00}});
     canOpenRx();
 
-    pltGetCount1ms_fake.return_val += 1000;
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
     processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
@@ -757,7 +758,7 @@ TEST_F(CurtisETest, emcyMessage) {
          .mdata = {0x00, 0x10, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00}});
     canOpenRx();
 
-    pltGetCount1ms_fake.return_val += 999;
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS - 1;
     processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
@@ -782,7 +783,7 @@ TEST_F(CurtisETest, emcyMessage) {
          .mdata = {0x01, 0x10, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00}});
     canOpenRx();
 
-    pltGetCount1ms_fake.return_val += 1000;
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
     processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
@@ -799,7 +800,7 @@ TEST_F(CurtisETest, emcyMessage) {
     canOpenRx();
     disconnectFromNode(1);
 
-    pltGetCount1ms_fake.return_val += 1000;
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
     processPendingNotifications();
 
     // Node is disconnected, so notification should be ignored

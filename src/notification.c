@@ -7,14 +7,6 @@
 #include <string.h>
 #include <velib/utils/ve_timer.h>
 
-/**
- * The Curtis E/SE controller tends to trigger EMCY messages right as it is
- * shutting down. To avoid showing notifications for these messages, we will
- * delay the injection of notifications by 1 second, and check if the node is
- * still connected before injecting the notification.
- */
-#define NOTIFICATION_INJECTION_DELAY_MS 1000
-
 static List *pendingNotifications;
 
 void notificationsInit() { pendingNotifications = listCreate(); }

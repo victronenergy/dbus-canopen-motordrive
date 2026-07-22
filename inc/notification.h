@@ -3,6 +3,14 @@
 
 #include <velib/base/types.h>
 
+/**
+ * The Curtis E/SE controller tends to trigger EMCY messages right as it is
+ * shutting down. To avoid showing notifications for these messages, we will
+ * delay the injection of notifications by 5 second, and check if the node is
+ * still connected before injecting the notification.
+ */
+#define NOTIFICATION_INJECTION_DELAY_MS 5000
+
 typedef enum NotificationType {
     NOTIFICATION_TYPE_WARNING = 0,
     NOTIFICATION_TYPE_ERROR = 1,

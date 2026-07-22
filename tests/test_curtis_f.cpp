@@ -4,6 +4,7 @@ extern "C" {
 #include "canopen.h"
 #include "drivers/curtis_f.h"
 #include "node.h"
+#include "notification.h"
 #include "servicemanager.h"
 }
 
@@ -534,7 +535,7 @@ TEST_F(CurtisFTest, emcyMessage) {
          .mdata = {0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}});
     canOpenRx();
 
-    pltGetCount1ms_fake.return_val += 1000;
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
     processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
@@ -546,7 +547,7 @@ TEST_F(CurtisFTest, emcyMessage) {
          .mdata = {0x12, 0xFF, 0x01, 0x10, 0x25, 0x01, 0x00, 0x00}});
     canOpenRx();
 
-    pltGetCount1ms_fake.return_val += 999;
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS - 1;
     processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
@@ -570,7 +571,7 @@ TEST_F(CurtisFTest, emcyMessage) {
          .mdata = {0x12, 0xFF, 0x01, 0x11, 0x25, 0x01, 0x00, 0x00}});
     canOpenRx();
 
-    pltGetCount1ms_fake.return_val += 1000;
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
     processPendingNotifications();
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
