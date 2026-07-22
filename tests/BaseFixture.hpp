@@ -3,6 +3,10 @@
 #include "environment.hpp"
 #include <gtest/gtest.h>
 
+extern "C" {
+#include <localsettings.h>
+}
+
 static struct VeDbus fakeDbusInstance;
 static struct VeRemoteService fakeRemoteService;
 
@@ -43,6 +47,8 @@ class BaseFixture : public ::testing::Test {
         RESET_FAKE(veValueTree);
         veValueTree_fake.return_val = &fakeRoot;
         RESET_FAKE(injectPlatformNotification);
+
+        localSettingsInit();
     }
 
     void TearDown() override {}

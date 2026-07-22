@@ -112,4 +112,5 @@ target_link_libraries(
     ${EVENT_LIBRARIES}
 )
 
-add_test(NAME Test COMMAND dbus-canopen-motordrive-test)
+include(GoogleTest)
+gtest_discover_tests(dbus-canopen-motordrive-test)
