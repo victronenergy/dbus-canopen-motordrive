@@ -117,6 +117,14 @@ AccessType=ro
 DefaultValue=0
 PDOMapping=0
 
+[2403]
+ParameterName=Dual motor configuration
+ObjectType=0x7
+DataType=0x0005
+AccessType=rw
+DefaultValue=0
+PDOMapping=0
+
 [3832]
 ParameterName=Actual Speed RPM
 ObjectType=0x7

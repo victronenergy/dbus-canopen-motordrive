@@ -20,6 +20,7 @@ class DiscoveryTest : public CanFixture {
         RESET_FAKE(testDiscoveryErrorCallback);
 
         canOpenInit();
+        dmcResetDualMotorConfigurations();
     }
 
     void TearDown() override {
@@ -27,6 +28,37 @@ class DiscoveryTest : public CanFixture {
 
         listDestroy(canOpenState.pendingSdoRequests);
         canOpenState.pendingSdoRequests = NULL;
+    }
+
+    // Takes a Sigma2N at node 1 through the 0x1008 abort, vendor ID and
+    // product code, up to and including sending the read of 0x2403.
+    void reachDmcDualMotorConfiguration() {
+        discoverNode(1, testDiscoverySuccessCallback,
+                     testDiscoveryErrorCallback, NULL);
+        canOpenTx();
+        this->canMsgReadQueue.push_back(
+            {.canId = 0x581,
+             .length = 8,
+             .mdata = {0x41, 0x08, 0x10, 0x00, 0x14, 0x00, 0x00, 0x00}});
+        canOpenRx();
+        this->canMsgReadQueue.push_back(
+            {.canId = 0x581,
+             .length = 8,
+             .mdata = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x06}});
+        canOpenRx();
+        canOpenTx();
+        this->canMsgReadQueue.push_back(
+            {.canId = 0x581,
+             .length = 8,
+             .mdata = {0x43, 0x18, 0x10, 0x01, 0xF1, 0x04, 0x00, 0x00}});
+        canOpenRx();
+        canOpenTx();
+        this->canMsgReadQueue.push_back(
+            {.canId = 0x581,
+             .length = 8,
+             .mdata = {0x43, 0x18, 0x10, 0x02, 0x14, 0x80, 0x48, 0x22}});
+        canOpenRx();
+        canOpenTx();
     }
 };
 
@@ -571,6 +603,21 @@ TEST_F(DiscoveryTest, discoverNodeSuccessDmcSigma2NViaVendorId) {
          .length = 8,
          .mdata = {0x43, 0x18, 0x10, 0x02, 0x14, 0x80, 0x48, 0x22}});
     canOpenRx();
+    canOpenTx();
+
+    message = this->canMsgSentLog.back();
+    EXPECT_EQ(message.canId, 0x601);
+    EXPECT_EQ(message.mdata[0], 0x40);
+    EXPECT_EQ(message.mdata[1], 0x03);
+    EXPECT_EQ(message.mdata[2], 0x24);
+    EXPECT_EQ(message.mdata[3], 0x00);
+
+    // Dual motor configuration 3, master
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x4F, 0x03, 0x24, 0x00, 0x03, 0x00, 0x00, 0x00}});
+    canOpenRx();
 
     EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 1);
     EXPECT_EQ(testDiscoverySuccessCallback_fake.arg2_val, &dmcDriver);
@@ -643,6 +690,70 @@ TEST_F(DiscoveryTest, discoverNodeErrorDmcProductCodeTimeout) {
     canOpenRx();
     canOpenTx();
 
+    pltGetCount1ms_fake.return_val = 50;
+    canOpenTx();
+
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 0);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 1);
+}
+
+TEST_F(DiscoveryTest, discoverNodeSuccessDmcSingleMotor) {
+    reachDmcDualMotorConfiguration();
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x4F, 0x03, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 1);
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.arg2_val, &dmcDriver);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 0);
+}
+
+// The slave of a 6-phase pair is read through its master, so discovery leaves
+// it out.
+TEST_F(DiscoveryTest, discoverNodeErrorDmcDualMotorSlave) {
+    reachDmcDualMotorConfiguration();
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x4F, 0x03, 0x24, 0x00, 0x04, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 0);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 1);
+}
+
+// Only the torque following slave of configuration 4 is left out. The other
+// dual motor slaves drive a wheel or shaft of their own.
+TEST_F(DiscoveryTest, discoverNodeSuccessDmcOtherDualMotorSlave) {
+    reachDmcDualMotorConfiguration();
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x4F, 0x03, 0x24, 0x00, 0x02, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 1);
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.arg2_val, &dmcDriver);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 0);
+}
+
+TEST_F(DiscoveryTest, discoverNodeSuccessDmcWithoutDualMotorConfiguration) {
+    reachDmcDualMotorConfiguration();
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x80, 0x03, 0x24, 0x00, 0x00, 0x00, 0x02, 0x06}});
+    canOpenRx();
+
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 1);
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.arg2_val, &dmcDriver);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 0);
+}
+
+TEST_F(DiscoveryTest, discoverNodeErrorDmcDualMotorConfigurationTimeout) {
+    reachDmcDualMotorConfiguration();
     pltGetCount1ms_fake.return_val = 50;
     canOpenTx();
 

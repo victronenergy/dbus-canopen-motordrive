@@ -116,8 +116,12 @@ def abort_segmented_name_upload(node):
 
 # The object dictionary is indexed by number rather than by name because the
 # DMC object dictionary reuses parameter names across indexes.
-def create_dmc_node(id):
+def create_dmc_node(id, dual_motor_configuration=0):
     node = canopen.LocalNode(id, "./dmc_sigma2n.eds")
+
+    # 0x2403, parameter M2-5 "DMconfig": 0 single motor, 3 master and 4 slave
+    # of a 6-phase pair. Run two simulators to play both halves.
+    node.sdo[0x2403].raw = dual_motor_configuration
 
     node.sdo[0x1008].raw = "Sigma2N IPM Traction"
     abort_segmented_name_upload(node)
@@ -212,13 +216,20 @@ def main(argv):
     parser.add_argument(
         "--node", "-n", type=lambda x: int(x, 0), default=node_id, help="Node ID"
     )
+    parser.add_argument(
+        "--dual-motor-configuration",
+        "-d",
+        type=int,
+        default=0,
+        help="0x2403: 0 single motor, 3 master, 4 slave of a 6-phase pair",
+    )
 
     args = parser.parse_args(argv)
 
     network = canopen.Network()
     network.connect(channel=args.channel, interface=args.bus, baudrate=250000)
 
-    dmc_node = create_dmc_node(args.node)
+    dmc_node = create_dmc_node(args.node, args.dual_motor_configuration)
     network.add_node(dmc_node)
     simulation_thread = threading.Thread(
         target=simulate_dmc_data, args=(dmc_node,), daemon=True
