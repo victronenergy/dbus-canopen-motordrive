@@ -611,6 +611,33 @@ TEST_F(DmcTest, emcyMessage) {
               NOTIFICATION_TYPE_ERROR);
     EXPECT_STREQ(lastTitle, "Motor temperature high (F5 S0)");
 
+    // Exact same fault doesn't trigger a new notification
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x00, 0x40, 0x08, 0x05, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
+    processPendingNotifications();
+
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 1);
+
+    // Same fault code, but different subcode triggers a new notification
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x00, 0x40, 0x08, 0x05, 0x01, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
+    processPendingNotifications();
+
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
+    EXPECT_EQ(injectPlatformNotification_fake.arg0_val,
+              NOTIFICATION_TYPE_ERROR);
+    EXPECT_STREQ(lastTitle, "Motor temperature high (F5 S1)");
+
     // F17 S2 Battery voltage too low, voltage error
     this->canMsgReadQueue.push_back(
         {.canId = 0x081,
@@ -621,7 +648,7 @@ TEST_F(DmcTest, emcyMessage) {
     pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
     processPendingNotifications();
 
-    EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 3);
     EXPECT_STREQ(lastTitle, "Battery voltage too low (F17 S2)");
 
     // A fault code that is not in the error database
@@ -634,6 +661,6 @@ TEST_F(DmcTest, emcyMessage) {
     pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
     processPendingNotifications();
 
-    EXPECT_EQ(injectPlatformNotification_fake.call_count, 3);
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 4);
     EXPECT_STREQ(lastTitle, "Unknown fault (F200 S7)");
 }
