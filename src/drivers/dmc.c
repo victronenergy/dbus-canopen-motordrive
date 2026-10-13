@@ -8,6 +8,7 @@
 #include <notification.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <velib/platform/plt.h>
 #include <velib/vecan/products.h>
 
 // Temperatures are reported as an unsigned byte with a fixed offset.
