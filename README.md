@@ -85,21 +85,16 @@ However it should work on any 123X E/SE series controllers.
 
 ## How to connect the DMC Sigma2N controller to a Victron GX product
 
-The controller must be running the Sigma2N "Full CAN Open" firmware (software
-version V03.x). The older "CAN Open Compatible" firmware broadcasts its data
-over TPDOs and does not serve the object dictionary over SDO, so it is not
-supported.
-
 Connect the GX device to the controller's A connector:
 
 | Role| RJ45 pin # | Controller pin |
 |-----|------------|----------------|
 | CAN Ground | 3 (Green/White) | A23 |
-| CAN High | 7 (Brown/White) | A21 (CAN H1) |
-| CAN Low | 8 (Brown) | A22 (CAN L1) |
+| CAN High | 7 (Brown/White) | A21 (CAN H1) or A25 (CAN H2) |
+| CAN Low | 8 (Brown) | A22 (CAN L1) or A26 (CAN L2) |
 
-The controller has a second CAN bus on A25 (CAN H2) and A26 (CAN L2), which
-works equally well.
+A21 and A22 are referred in the manual as "CAN bus in", A25 and A26 are referred as "CAN next".
+Refer to the section "Wiring of CAN bus" for further details.
 
 ### CAN Ground
 
@@ -122,6 +117,12 @@ On the VE.Can side, it can be terminated with a dedicated [VE.Can Terminator](ht
 
 ### DMC Sigma2N Model support
 
+Driver has been tested on the DMC Sigma2N controller with firmware V03.03.01.  
+The controller must be running the Sigma2N "Full CAN Open" firmware (software
+version V03.x).  
+The older "CAN Open Compatible" firmware broadcasts its data
+over TPDOs and does not serve the object dictionary over SDO, so it is not
+supported.  
 The node ID and the bit rate are set with the DMC Calibrator. The controller
 supports 250 and 500 kbit/s, so either CAN-bus profile works.
 
@@ -187,7 +188,8 @@ Note that the device power is calculated as Capacitor Volts * Battery Current wh
 
 | index | subindex | Description |
 |------------|----------------|---|
-| 0x1008 | 0 | Controller Name |
+| 0x1018 | 1 | Vendor ID |
+| 0x1018 | 2 | Product Code |
 | 0x1018 | 4 | Controller Serial Number |
 | 0x383F | 0 | Battery Voltage, 1 = 0.1V |
 | 0x383E | 0 | Battery Current, 1 = 0.1A |
@@ -195,11 +197,5 @@ Note that the device power is calculated as Capacitor Volts * Battery Current wh
 | 0x3836 | 0 | Motor Temperature, degrees C with a -51 offset |
 | 0x411C | 0 | Motor Torque, 1 = 0.1Nm |
 | 0x3837 | 0 | Controller Temperature, degrees C with a -51 offset |
-
-Note that the controller name is longer than four bytes, so it is read with a
-segmented SDO transfer.
-
-The controller also exposes the motor speed as 0x3832 and the torque as a
-percentage of rated torque as 0x6077 and 0x3834. The driver uses 0x606C and
-0x411C because they match the DS402 profile and the Nm unit of the D-Bus item
-respectively.
+| 0x3840 | 0 | Fault Code |
+| 0x3841 | 0 | Fault Subcode |
