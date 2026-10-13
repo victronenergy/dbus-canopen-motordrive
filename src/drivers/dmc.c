@@ -206,7 +206,7 @@ static void reportFault(Node *node, un8 faultCode, un32 faultSubcode) {
                  "Unknown fault (F%d S%u)", faultCode, faultSubcode);
     }
 
-    error("Fault on node %d: %s", node->device->nodeId, notificationTitle);
+    error("EMCY from node %d: %s", node->device->nodeId, notificationTitle);
     getDeviceDisplayName(node->device, &deviceName);
     queueNotification(node->device->nodeId, NOTIFICATION_TYPE_ERROR,
                       notificationTitle, veStrCStr(&deviceName));
