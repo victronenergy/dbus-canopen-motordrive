@@ -1,13 +1,13 @@
 # dbus-canopen-motordrive
 
-Venus OS driver for Sevcon Gen4 AC, Curtis F series and Curtis E/SE series controllers: enables communication and motordrive data reporting via D-Bus.
+Venus OS driver for Sevcon Gen4 AC, Curtis F series, Curtis E/SE series and DMC Sigma2N controllers: enables communication and motordrive data reporting via D-Bus.
 
 ![dbus-canopen-motordrive](doc/dbus-canopen-motordrive-header.png)
 
 ## Features
 
 - Works out of the box without the need to re-configure the motor controller.
-- Compatible with Sevcon Gen4 AC, Curtis F series and Curtis E/SE series controllers.
+- Compatible with Sevcon Gen4 AC, Curtis F series, Curtis E/SE series and DMC Sigma2N controllers.
 - Report motor power, rpm, direction, temperature, torque and controller temperature.
 - Easy setup. Scan the CAN bus and find compatible motor controllers.
 - Supports multiple controllers on the same bus (each controller must have a unique CANopen node ID).
@@ -83,6 +83,48 @@ To enable CAN termination on the controller, connect CAN TERM H (pin 21) and CAN
 Driver has been tested on the Curtis 1232 SE and 1234 E.
 However it should work on any 123X E/SE series controllers.
 
+## How to connect the DMC Sigma2N controller to a Victron GX product
+
+The controller must be running the Sigma2N "Full CAN Open" firmware (software
+version V03.x). The older "CAN Open Compatible" firmware broadcasts its data
+over TPDOs and does not serve the object dictionary over SDO, so it is not
+supported.
+
+Connect the GX device to the controller's A connector:
+
+| Role| RJ45 pin # | Controller pin |
+|-----|------------|----------------|
+| CAN Ground | 3 (Green/White) | A23 |
+| CAN High | 7 (Brown/White) | A21 (CAN H1) |
+| CAN Low | 8 (Brown) | A22 (CAN L1) |
+
+The controller has a second CAN bus on A25 (CAN H2) and A26 (CAN L2), which
+works equally well.
+
+### CAN Ground
+
+On controllers with hardware version 7.01 or older, A23 is the 0V reference for
+the CAN bus. On a non-isolated controller it is tied to battery ground; on an
+isolated one (part number ending in C) it must be connected to the output of
+the 12-24V isolator. On hardware version 7.03 and newer the pin has no internal
+connection and the CAN bus is supplied internally.
+
+Ensure that there is a common ground connection for all nodes on the CAN bus.
+
+### CAN Termination
+
+If your system has more than one CAN node, connect the nodes in a 'daisy chain'
+arrangement and terminate the connections of the two end nodes with a 120 ohms
+resistor. The controller has a 120 ohm resistor built in on pin A24, which can
+be linked to A21 or A25 when the controller is the end node.
+
+On the VE.Can side, it can be terminated with a dedicated [VE.Can Terminator](https://www.victronenergy.com/accessories/ve-can-rj45-terminator).
+
+### DMC Sigma2N Model support
+
+The node ID and the bit rate are set with the DMC Calibrator. The controller
+supports 250 and 500 kbit/s, so either CAN-bus profile works.
+
 ## How to configure the Victron GX product
 
 Requires Venus OS version 3.70~45 or later.
@@ -140,3 +182,24 @@ Note that the device power is calculated as Capacitor Volts * Battery Current wh
 | 0x320B | 0 | Motor Temperature |
 | 0x322A | 0 | Controller Temperature |
 | 0x306C | 0 | Swap Motor Direction |
+
+## DMC Sigma2N - Which SDOs are used by the driver
+
+| index | subindex | Description |
+|------------|----------------|---|
+| 0x1008 | 0 | Controller Name |
+| 0x1018 | 4 | Controller Serial Number |
+| 0x383F | 0 | Battery Voltage, 1 = 0.1V |
+| 0x383E | 0 | Battery Current, 1 = 0.1A |
+| 0x606C | 0 | Motor RPM |
+| 0x3836 | 0 | Motor Temperature, degrees C with a -51 offset |
+| 0x411C | 0 | Motor Torque, 1 = 0.1Nm |
+| 0x3837 | 0 | Controller Temperature, degrees C with a -51 offset |
+
+Note that the controller name is longer than four bytes, so it is read with a
+segmented SDO transfer.
+
+The controller also exposes the motor speed as 0x3832 and the torque as a
+percentage of rated torque as 0x6077 and 0x3834. The driver uses 0x606C and
+0x411C because they match the DS402 profile and the Nm unit of the D-Bus item
+respectively.

@@ -552,6 +552,44 @@ TEST_F(CanopenTest, readSegmentedSdoAsyncErrorResponse) {
     EXPECT_EQ(testErrorCallback_fake.call_count, 1);
 }
 
+TEST_F(CanopenTest, readSegmentedSdoAsyncAbortDuringSegment) {
+    VeRawCanMsg message;
+    un8 buffer[256];
+    un8 length;
+
+    // Frames captured from DMC Sigma2N firmware V03.03.01, which announces a
+    // 20 byte segmented upload of 0x1008 and then aborts every segment
+    // request with 0x06020000.
+    canOpenReadSegmentedSdoAsync(1, 0x1008, 0x00, NULL, buffer, &length,
+                                 sizeof(buffer) - 1, testCallback,
+                                 testErrorCallback);
+
+    EXPECT_NE(canOpenState.pendingSdoRequests->first, nullptr);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x41, 0x08, 0x10, 0x00, 0x14, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    message = this->canMsgSentLog.back();
+    EXPECT_EQ(message.canId, 0x601);
+    EXPECT_EQ(message.mdata[0], 0x60);
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x06}});
+    canOpenRx();
+
+    EXPECT_EQ(testCallback_fake.call_count, 0);
+    EXPECT_EQ(testErrorCallback_fake.call_count, 1);
+    EXPECT_EQ(testErrorCallback_fake.arg1_val, SDO_READ_ERROR_SEGMENT_TRANSFER);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 0);
+}
+
 TEST_F(CanopenTest, readSegmentedSdoAsyncMaxLength) {
     VeRawCanMsg message;
     un8 buffer[10];

@@ -274,6 +274,20 @@ handleReadSegmentedSdoResponse(ListItem *item,
         return;
     }
 
+    if ((pendingRequest->response.control & SDO_COMMAND_MASK) !=
+        SDO_READ_SEGMENT_RESPONSE) {
+        // Without this an abort during the segment phase is parsed as seven
+        // bytes of payload, because its control byte sets neither the unused
+        // count nor the end bit. DMC Sigma2N firmware V03.03.01 aborts every
+        // segment request after announcing the transfer.
+        logNodeError(pendingRequest->nodeId, "SDO_READ_ERROR_SEGMENT_TRANSFER");
+        listRemove(canOpenState.pendingSdoRequests, item);
+        pendingRequest->onError(pendingRequest,
+                                SDO_READ_ERROR_SEGMENT_TRANSFER);
+        _free(pendingRequest);
+        return;
+    }
+
     if (*pendingRequest->segmented_length == 1) {
         *pendingRequest->segmented_length = 0;
     }

@@ -5,6 +5,7 @@ extern "C" {
 #include "discovery.h"
 #include <drivers/curtis_e.h>
 #include <drivers/curtis_f.h>
+#include <drivers/dmc.h>
 #include <drivers/sevcon.h>
 }
 
@@ -513,6 +514,140 @@ TEST_F(DiscoveryTest, discoverNodeSuccessSevconWithBorgWarnerControllerName) {
     EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 1);
     EXPECT_EQ(testDiscoverySuccessCallback_fake.arg2_val, &sevconDriver);
     EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 0);
+}
+
+// All four frames below were captured from a DMC Sigma2N pair, firmware
+// V03.03.01, on a 6-phase bench setup. The controller announces a 20 byte
+// segmented upload of 0x1008 and then aborts the segment request, so
+// discovery has to identify it from the identity object instead.
+TEST_F(DiscoveryTest, discoverNodeSuccessDmcSigma2NViaVendorId) {
+    VeRawCanMsg message;
+
+    discoverNode(1, testDiscoverySuccessCallback, testDiscoveryErrorCallback,
+                 NULL);
+
+    EXPECT_NE(canOpenState.pendingSdoRequests->first, nullptr);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x41, 0x08, 0x10, 0x00, 0x14, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x06}});
+    canOpenRx();
+    canOpenTx();
+
+    message = this->canMsgSentLog.back();
+    EXPECT_EQ(message.canId, 0x601);
+    EXPECT_EQ(message.mdata[0], 0x40);
+    EXPECT_EQ(message.mdata[1], 0x18);
+    EXPECT_EQ(message.mdata[2], 0x10);
+    EXPECT_EQ(message.mdata[3], 0x01);
+
+    // Vendor ID 0x04F1
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x18, 0x10, 0x01, 0xF1, 0x04, 0x00, 0x00}});
+    canOpenRx();
+    canOpenTx();
+
+    message = this->canMsgSentLog.back();
+    EXPECT_EQ(message.canId, 0x601);
+    EXPECT_EQ(message.mdata[0], 0x40);
+    EXPECT_EQ(message.mdata[1], 0x18);
+    EXPECT_EQ(message.mdata[2], 0x10);
+    EXPECT_EQ(message.mdata[3], 0x02);
+
+    // Product code 0x22488014
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x18, 0x10, 0x02, 0x14, 0x80, 0x48, 0x22}});
+    canOpenRx();
+
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 1);
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.arg2_val, &dmcDriver);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 0);
+}
+
+TEST_F(DiscoveryTest, discoverNodeErrorDmcProductCodeUnknown) {
+    VeRawCanMsg message;
+
+    discoverNode(1, testDiscoverySuccessCallback, testDiscoveryErrorCallback,
+                 NULL);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x41, 0x08, 0x10, 0x00, 0x14, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x06}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x18, 0x10, 0x01, 0xF1, 0x04, 0x00, 0x00}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x18, 0x10, 0x02, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 0);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 1);
+}
+
+TEST_F(DiscoveryTest, discoverNodeErrorDmcProductCodeTimeout) {
+    VeRawCanMsg message;
+
+    discoverNode(1, testDiscoverySuccessCallback, testDiscoveryErrorCallback,
+                 NULL);
+
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x41, 0x08, 0x10, 0x00, 0x14, 0x00, 0x00, 0x00}});
+    canOpenRx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x06}});
+    canOpenRx();
+    canOpenTx();
+
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x581,
+         .length = 8,
+         .mdata = {0x43, 0x18, 0x10, 0x01, 0xF1, 0x04, 0x00, 0x00}});
+    canOpenRx();
+    canOpenTx();
+
+    pltGetCount1ms_fake.return_val = 50;
+    canOpenTx();
+
+    EXPECT_EQ(testDiscoverySuccessCallback_fake.call_count, 0);
+    EXPECT_EQ(testDiscoveryErrorCallback_fake.call_count, 1);
 }
 
 TEST_F(DiscoveryTest, discoverNodeSuccessCurtisF) {
