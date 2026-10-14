@@ -10,3 +10,5 @@ velib_path.mk
 dist
 venus-data-tmp
 .vscode
+CLAUDE.local.md
+.claude/settings.local.json
