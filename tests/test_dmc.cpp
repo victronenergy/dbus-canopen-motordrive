@@ -574,6 +574,10 @@ TEST_F(DmcTest, polledFault) {
     EXPECT_STREQ(lastTitle, "Unknown fault (F200 S7)");
 }
 
+// No Sigma2N EMCY has been captured yet, so the EMCY frames below are written
+// from the manual and CiA 301. Byte 2 is the error register: bit 0 generic,
+// set for any error, bit 2 voltage, bit 3 temperature. The driver does not
+// read it.
 TEST_F(DmcTest, emcyMessage) {
     canOpenRegisterEmcyHandler(nodesEmcyHandler, NULL);
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
@@ -600,7 +604,7 @@ TEST_F(DmcTest, emcyMessage) {
     this->canMsgReadQueue.push_back(
         {.canId = 0x081,
          .length = 8,
-         .mdata = {0x00, 0x40, 0x08, 0x05, 0x00, 0x00, 0x00, 0x00}});
+         .mdata = {0x00, 0x40, 0x09, 0x05, 0x00, 0x00, 0x00, 0x00}});
     canOpenRx();
 
     pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
@@ -615,7 +619,7 @@ TEST_F(DmcTest, emcyMessage) {
     this->canMsgReadQueue.push_back(
         {.canId = 0x081,
          .length = 8,
-         .mdata = {0x00, 0x40, 0x08, 0x05, 0x00, 0x00, 0x00, 0x00}});
+         .mdata = {0x00, 0x40, 0x09, 0x05, 0x00, 0x00, 0x00, 0x00}});
     canOpenRx();
 
     pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
@@ -627,7 +631,7 @@ TEST_F(DmcTest, emcyMessage) {
     this->canMsgReadQueue.push_back(
         {.canId = 0x081,
          .length = 8,
-         .mdata = {0x00, 0x40, 0x08, 0x05, 0x01, 0x00, 0x00, 0x00}});
+         .mdata = {0x00, 0x40, 0x09, 0x05, 0x01, 0x00, 0x00, 0x00}});
     canOpenRx();
 
     pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
@@ -642,7 +646,7 @@ TEST_F(DmcTest, emcyMessage) {
     this->canMsgReadQueue.push_back(
         {.canId = 0x081,
          .length = 8,
-         .mdata = {0x00, 0x30, 0x04, 0x11, 0x02, 0x00, 0x00, 0x00}});
+         .mdata = {0x00, 0x30, 0x05, 0x11, 0x02, 0x00, 0x00, 0x00}});
     canOpenRx();
 
     pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
@@ -663,4 +667,49 @@ TEST_F(DmcTest, emcyMessage) {
 
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 4);
     EXPECT_STREQ(lastTitle, "Unknown fault (F200 S7)");
+}
+
+// A fault that clears and comes back between two polls is only visible
+// through EMCY. The reset (error code 0) must re-arm the deduplication,
+// otherwise the recurrence matches the cached fault and is dropped, and the
+// next poll, which sees the same fault standing, drops it too.
+TEST_F(DmcTest, emcyResetRearmsFault) {
+    canOpenRegisterEmcyHandler(nodesEmcyHandler, NULL);
+    connectToDmcNode();
+    this->canMsgSentLog.clear();
+
+    // F5 S0 Motor temperature high, temperature error
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x00, 0x40, 0x09, 0x05, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
+    processPendingNotifications();
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 1);
+
+    // The fault clears
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
+    processPendingNotifications();
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 1);
+
+    // and comes back before any poll observed the clear
+    this->canMsgReadQueue.push_back(
+        {.canId = 0x081,
+         .length = 8,
+         .mdata = {0x00, 0x40, 0x09, 0x05, 0x00, 0x00, 0x00, 0x00}});
+    canOpenRx();
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
+    processPendingNotifications();
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
+    EXPECT_STREQ(lastTitle, "Motor temperature high (F5 S0)");
+
+    // The poll then sees the same fault standing, which is not new.
+    readCycleWithFault(5, 0);
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 2);
 }

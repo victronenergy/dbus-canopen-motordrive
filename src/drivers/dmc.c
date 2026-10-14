@@ -302,12 +302,18 @@ static void onEMCYMessage(Node *node, VeRawCanMsg *message) {
     faultSubcode = message->mdata[4] | (message->mdata[5] << 8) |
                    (message->mdata[6] << 16) | ((un32)message->mdata[7] << 24);
 
+    context = (DmcContext *)node->device->driverContext;
+
     if (errorCode == 0) {
-        // Fault cleared
+        // Fault cleared. Forget the reported fault so that it is announced
+        // again if it recurs before the next poll observes the clear. A reset
+        // arriving between the 0x3840 and 0x3841 reads of a poll can pair a
+        // stale code with a fresh subcode; that window is accepted.
+        context->reportedFaultCode = 0;
+        context->reportedFaultSubcode = 0;
         return;
     }
 
-    context = (DmcContext *)node->device->driverContext;
     if (faultCode == context->reportedFaultCode &&
         (un16)faultSubcode == context->reportedFaultSubcode) {
         return;

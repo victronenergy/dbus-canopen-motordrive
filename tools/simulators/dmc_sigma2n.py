@@ -168,7 +168,13 @@ def simulate_dmc_data(node, update_interval=0.1):
 # bytes 0-1 emergency error code, byte 2 error register, byte 3 DMC fault code,
 # bytes 4-7 DMC fault subcode.
 def send_fault(node, error_code, fault_code, fault_subcode=0):
-    error_register = 0x01 | (0x08 if error_code == 0x4000 else 0x00)
+    # CiA 301 error register: bit 0 generic (set for any error), bit 2
+    # voltage, bit 3 temperature.
+    error_register = 0x01
+    if error_code & 0xF000 == 0x3000:
+        error_register |= 0x04
+    elif error_code & 0xF000 == 0x4000:
+        error_register |= 0x08
     node.sdo[0x1001].raw = error_register
     node.sdo[0x3840].raw = fault_code
     node.sdo[0x3841].raw = fault_subcode
