@@ -73,4 +73,8 @@ veBool veDBusAddLocalSetting(struct VeItem *item, VeVariant *defaultValue,
                              veBool hang) {
     return veTrue;
 }
+veBool veDBusAddLocalSettingSync(struct VeItem *item, VeVariant *defaultValue,
+                                 VeVariant *minValue, VeVariant *maxValue) {
+    return veTrue;
+}
 }

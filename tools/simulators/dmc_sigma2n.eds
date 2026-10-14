@@ -1,0 +1,241 @@
+[FileInfo]
+FileName=dmc_sigma2n.eds
+FileVersion=1.0
+FileRevision=1
+EDSVersion=4.0
+Description=EDS file for DMC Sigma2N Full CANopen Simulator Node
+
+[DeviceInfo]
+VendorName=DMC Gmbh
+VendorNumber=0x000004F1
+ProductName=Sigma2N Simulator
+ProductNumber=0x22488014
+RevisionNumber=0x00010001
+OrderCode=SWtyp IPM480T4-30
+BaudRate_10=0
+BaudRate_20=0
+BaudRate_50=0
+BaudRate_125=1
+BaudRate_250=1
+BaudRate_500=1
+BaudRate_800=0
+BaudRate_1000=0
+SimpleBootUpMaster=0
+SimpleBootUpSlave=1
+Granularity=8
+DynamicChannelsSupported=0
+GroupMessaging=0
+NrOfRXPDO=8
+NrOfTXPDO=8
+LSS_Supported=0
+
+[MandatoryObjects]
+SupportedObjects=3
+1=0x1000
+2=0x1001
+3=0x1018
+
+[1000]
+ParameterName=Device Type
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0xFFFF0192
+PDOMapping=0
+
+[1001]
+ParameterName=Error Register
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=0
+PDOMapping=0
+
+[1008]
+ParameterName=Device Name
+ObjectType=0x7
+DataType=0x0009
+AccessType=ro
+DefaultValue="Sigma2N IPM Traction"
+PDOMapping=0
+
+[1009]
+ParameterName=Hardware Version
+ObjectType=0x7
+DataType=0x0009
+AccessType=ro
+DefaultValue="S2N4T048V0800A0701a2"
+PDOMapping=0
+
+[100A]
+ParameterName=Software Version
+ObjectType=0x7
+DataType=0x0009
+AccessType=ro
+DefaultValue="V 03.03.01"
+PDOMapping=0
+
+[1018]
+ParameterName=Identity Object
+ObjectType=0x9
+SubNumber=4
+1_Sub0=4
+1_Sub1=Vendor ID
+1_Sub2=Product Code
+1_Sub3=Revision Number
+1_Sub4=Serial Number
+
+[1018sub1]
+ParameterName=Vendor ID
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0x000004F1
+PDOMapping=0
+
+[1018sub2]
+ParameterName=Product Code
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0x22488014
+PDOMapping=0
+
+[1018sub3]
+ParameterName=Revision Number
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0x00010001
+PDOMapping=0
+
+[1018sub4]
+ParameterName=Serial Number
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
+PDOMapping=0
+
+[3832]
+ParameterName=Actual Speed RPM
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+Unit=rpm
+
+[3834]
+ParameterName=Actual Torque
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+Unit=100/4096 percent per unit
+
+[3836]
+ParameterName=Motor Temperature
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=51
+PDOMapping=1
+Unit=degC with -51 offset
+
+[3837]
+ParameterName=Controller Temperature
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=51
+PDOMapping=1
+Unit=degC with -51 offset
+
+[3838]
+ParameterName=Drive Status Indicator
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=1
+PDOMapping=1
+
+[383E]
+ParameterName=Battery Current
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+Unit=0.1A per unit
+
+[383F]
+ParameterName=Battery Voltage
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+Unit=0.1V per unit
+
+[3840]
+ParameterName=Fault Code
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+
+[3841]
+ParameterName=Fault Subcode
+ObjectType=0x7
+DataType=0x0006
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+
+[4100]
+ParameterName=Drive Hour Counter
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+Unit=s
+
+[4101]
+ParameterName=Key Hour Counter
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+Unit=s
+
+[411C]
+ParameterName=Actual Torque Nm
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+Unit=0.1Nm per unit
+
+[606C]
+ParameterName=Velocity Actual Value
+ObjectType=0x7
+DataType=0x0004
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+Unit=rpm
+
+[6077]
+ParameterName=Torque Actual Value
+ObjectType=0x7
+DataType=0x0003
+AccessType=ro
+DefaultValue=0
+PDOMapping=1
+Unit=0.1 percent per unit

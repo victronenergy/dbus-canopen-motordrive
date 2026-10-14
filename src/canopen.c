@@ -274,6 +274,16 @@ handleReadSegmentedSdoResponse(ListItem *item,
         return;
     }
 
+    if ((pendingRequest->response.control & SDO_COMMAND_MASK) !=
+        SDO_READ_SEGMENT_RESPONSE) {
+        logNodeError(pendingRequest->nodeId, "SDO_READ_ERROR_SEGMENT_TRANSFER");
+        listRemove(canOpenState.pendingSdoRequests, item);
+        pendingRequest->onError(pendingRequest,
+                                SDO_READ_ERROR_SEGMENT_TRANSFER);
+        _free(pendingRequest);
+        return;
+    }
+
     if (*pendingRequest->segmented_length == 1) {
         *pendingRequest->segmented_length = 0;
     }

@@ -35,6 +35,7 @@ add_library(dbus-canopen-motordrive-lib
     ../src/localsettings.c
     ../src/canopen.c
     ../src/discovery.c
+    ../src/drivers/dmc.c
     ../src/drivers/sevcon.c
     ../src/drivers/curtis_e.c
     ../src/drivers/curtis_f.c
@@ -97,6 +98,7 @@ add_executable(dbus-canopen-motordrive-test
     test_discovery.cpp
     test_servicemanager.cpp
     test_node.cpp
+    test_dmc.cpp
     test_sevcon.cpp
     test_curtis_f.cpp
     test_curtis_e.cpp

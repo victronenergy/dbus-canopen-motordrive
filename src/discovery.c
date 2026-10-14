@@ -2,6 +2,7 @@
 #include <discovery.h>
 #include <drivers/curtis_e.h>
 #include <drivers/curtis_f.h>
+#include <drivers/dmc.h>
 #include <drivers/sevcon.h>
 #include <logger.h>
 #include <memory.h>
@@ -17,7 +18,9 @@ static Driver *getDriverForNodeName(const char *name, un8 length) {
     } else if (length >= 4 && strncmp(name, "AC F", 4) == 0) {
         return &curtisFDriver;
     }
-    // Curtis 123X SE/E controllers do not support SDO 0x1008
+    // Curtis 123X SE/E controllers do not support SDO 0x1008, and DMC Sigma2N
+    // controllers do not serve it either. Both are identified from the
+    // identity object instead, see onProductNameError().
 
     return NULL;
 }
@@ -50,11 +53,27 @@ static void onCurtisModelNumberError(CanOpenPendingSdoRequest *request,
     onError((DiscoveryContext *)request->context);
 }
 
+static void onDmcProductCodeResponse(CanOpenPendingSdoRequest *request) {
+    if (request->response.data == DMC_SIGMA2N_PRODUCT_CODE) {
+        onSuccess((DiscoveryContext *)request->context, &dmcDriver);
+    } else {
+        onError((DiscoveryContext *)request->context);
+    }
+}
+
+static void onDmcProductCodeError(CanOpenPendingSdoRequest *request,
+                                  CanOpenError error) {
+    onError((DiscoveryContext *)request->context);
+}
+
 static void onVendorIdResponse(CanOpenPendingSdoRequest *request) {
     if (request->response.data == CURTIS_VENDOR_ID) {
         canOpenReadSdoAsync(request->nodeId, 0x3464, 0, request->context,
                             onCurtisModelNumberResponse,
                             onCurtisModelNumberError);
+    } else if (request->response.data == DMC_VENDOR_ID) {
+        canOpenReadSdoAsync(request->nodeId, 0x1018, 2, request->context,
+                            onDmcProductCodeResponse, onDmcProductCodeError);
     } else {
         onError((DiscoveryContext *)request->context);
     }
@@ -81,8 +100,10 @@ static void onProductNameSuccess(CanOpenPendingSdoRequest *request) {
 
 static void onProductNameError(CanOpenPendingSdoRequest *request,
                                CanOpenError error) {
-    // Some controllers do not support reading the product name. (e.g. Curtis
-    // 123X SE/E). Falling back to reading the vendor ID.
+    // Some controllers do not support reading the product name. Curtis 123X
+    // SE/E do not implement 0x1008 at all, and DMC Sigma2N firmware V03.03.01
+    // announces a segmented upload of 0x1008 and then aborts every segment
+    // request with 0x06020000. Falling back to reading the vendor ID.
     if (error != SDO_READ_ERROR_TIMEOUT) {
         canOpenReadSdoAsync(request->nodeId, 0x1018, 1, request->context,
                             onVendorIdResponse, onVendorIdError);

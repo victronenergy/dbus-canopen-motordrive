@@ -70,4 +70,6 @@ void veDbusItemTick(void);
 veBool veDBusAddLocalSetting(struct VeItem *item, VeVariant *defaultValue,
                              VeVariant *minValue, VeVariant *maxValue,
                              veBool hang);
+veBool veDBusAddLocalSettingSync(struct VeItem *item, VeVariant *defaultValue,
+                                 VeVariant *minValue, VeVariant *maxValue);
 }
