@@ -112,6 +112,25 @@ TEST_F(ArrayTest, deserialize) {
     un8ArrayClear(&array);
 }
 
+// The string comes from localsettings and is used to index the node table, so
+// anything that is not a CANopen node ID is dropped. 257 must not wrap to 1.
+TEST_F(ArrayTest, deserializeInvalidNodeIds) {
+    VeItem item;
+
+    item.variant.type.tp = VE_STR;
+    item.variant.value.Ptr = (void *)"0,5,128,257,-1,127";
+
+    Un8Array array;
+
+    un8ArrayInit(&array);
+    un8ArrayDeserialize(&array, &item);
+    EXPECT_EQ(array.count, 2);
+    EXPECT_EQ(array.data[0], 5);
+    EXPECT_EQ(array.data[1], 127);
+
+    un8ArrayClear(&array);
+}
+
 TEST_F(ArrayTest, deserializeNullString) {
     VeItem item;
 
