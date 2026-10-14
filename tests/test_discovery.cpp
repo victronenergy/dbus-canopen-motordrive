@@ -20,7 +20,6 @@ class DiscoveryTest : public CanFixture {
         RESET_FAKE(testDiscoveryErrorCallback);
 
         canOpenInit();
-        dmcResetDualMotorConfigurations();
     }
 
     void TearDown() override {

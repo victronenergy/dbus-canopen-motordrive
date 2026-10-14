@@ -37,27 +37,24 @@ typedef struct _DmcReadings {
 } DmcReadings;
 
 /**
- * When a slave is configured its values are read in the same cycle, after the
- * master's, and the combined result is published once the slave's last read
- * has answered. The master's readings are held here until then.
+ * On connection the driver reads 0x2403, and only a dual motor master gets
+ * the SlaveNodeId setting, which is filled in by hand. When a slave is
+ * configured its values are read in the same cycle, after the master's, and
+ * the combined result is published once the slave's last read has answered.
+ * The master's readings are held here until then.
  */
 typedef struct _DmcContext {
-    DmcFaultState fault;
-
     VeItem *slaveNodeIdSetting;
     un8 slaveNodeId;
-    veBool slaveMissing;
+    veBool slaveConnected;
+    veBool slaveProbing;
+
+    DmcFaultState fault;
+    DmcFaultState slaveFault;
+
     DmcReadings master;
     DmcReadings slave;
-    DmcFaultState slaveFault;
 } DmcContext;
-
-/**
- * Discovery reads 0x2403 from every Sigma2N and records it here, so a master
- * can find its slave, which is never discovered as a node of its own.
- */
-void dmcRecordDualMotorConfiguration(un8 nodeId, un8 configuration);
-void dmcResetDualMotorConfigurations(void);
 
 extern Driver dmcDriver;
 

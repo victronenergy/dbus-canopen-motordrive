@@ -16,6 +16,8 @@
 // Temperatures are reported as an unsigned byte with a fixed offset.
 #define TEMPERATURE_OFFSET 51
 
+#define GET_DMC_CONTEXT(a) ((DmcContext *)(a->device->driverContext))
+
 typedef struct {
     un8 faultCode;
     char const *error;
@@ -69,78 +71,6 @@ static struct VeSettingProperties slaveNodeIdType = {
     .max.value.SN32 = 127,
 };
 
-// 0x2403 per node, as read by discovery.
-static un8 dualMotorConfigurations[127];
-static veBool dualMotorConfigurationKnown[127];
-
-void dmcRecordDualMotorConfiguration(un8 nodeId, un8 configuration) {
-    dualMotorConfigurations[nodeId - 1] = configuration;
-    dualMotorConfigurationKnown[nodeId - 1] = veTrue;
-}
-
-void dmcResetDualMotorConfigurations(void) {
-    memset(dualMotorConfigurations, 0, sizeof(dualMotorConfigurations));
-    memset(dualMotorConfigurationKnown, 0, sizeof(dualMotorConfigurationKnown));
-}
-
-static veBool hasDualMotorConfiguration(un8 nodeId, un8 configuration) {
-    return dualMotorConfigurationKnown[nodeId - 1] &&
-           dualMotorConfigurations[nodeId - 1] == configuration;
-}
-
-// The only dual motor slave discovery has seen. With two or more there is no
-// telling which belongs to which master, so none is chosen.
-static un8 findOnlySlave(void) {
-    un8 nodeId;
-    un8 found;
-
-    found = 0;
-    for (nodeId = 1; nodeId <= 127; nodeId += 1) {
-        if (hasDualMotorConfiguration(nodeId, DMC_DUAL_MOTOR_SLAVE)) {
-            if (found != 0) {
-                return 0;
-            }
-            found = nodeId;
-        }
-    }
-    return found;
-}
-
-// SlaveNodeId is 0 until a slave is known. It is filled in once, when this
-// controller is a dual motor master and discovery found exactly one slave, and
-// then kept: after a restart the slave is not scanned again, because it was
-// never added to DiscoveredNodes. Any other value is taken as configured.
-static un8 resolveSlaveNodeId(Node *node, DmcContext *context) {
-    VeVariant v;
-    un8 nodeId;
-    un8 slaveNodeId;
-
-    nodeId = node->device->nodeId;
-    veItemLocalValue(context->slaveNodeIdSetting, &v);
-    if (!veVariantIsValid(&v)) {
-        // Not loaded from localsettings yet.
-        return 0;
-    }
-    if (v.value.SN32 != 0) {
-        if (v.value.SN32 < 1 || v.value.SN32 > 127 || v.value.SN32 == nodeId) {
-            return 0;
-        }
-        return (un8)v.value.SN32;
-    }
-    if (!hasDualMotorConfiguration(nodeId, DMC_DUAL_MOTOR_MASTER)) {
-        return 0;
-    }
-
-    slaveNodeId = findOnlySlave();
-    // The local value only changes once localsettings has answered, so write
-    // it on the cycle the slave is first found rather than on every cycle.
-    if (slaveNodeId != 0 && slaveNodeId != context->slaveNodeId) {
-        info("Node %u reads dual motor slave node %u", nodeId, slaveNodeId);
-        veItemSet(context->slaveNodeIdSetting, veVariantSn32(&v, slaveNodeId));
-    }
-    return slaveNodeId;
-}
-
 static Error *findError(un8 faultCode) {
     size_t dbSize = sizeof(errorDb) / sizeof(Error);
     for (size_t i = 0; i < dbSize; i++) {
@@ -151,54 +81,7 @@ static Error *findError(un8 faultCode) {
     return NULL;
 }
 
-static DmcContext *getContext(Node *node) {
-    return (DmcContext *)node->device->driverContext;
-}
-
 static sn16 higherOf(sn16 a, sn16 b) { return a > b ? a : b; }
-
-// Half of the drive's current, power or torque would read as the whole drive,
-// so while the slave is missing they are published invalid instead.
-static void invalidateShares(Node *node) {
-    VeVariant v;
-
-    veItemOwnerSet(node->device->current, veVariantInvalidType(&v, VE_FLOAT));
-    veItemOwnerSet(node->device->power, veVariantInvalidType(&v, VE_SN32));
-    veItemOwnerSet(node->device->motorTorque,
-                   veVariantInvalidType(&v, VE_FLOAT));
-}
-
-static void publishCombined(Node *node, DmcContext *context) {
-    VeVariant v;
-    Device *device;
-    float current;
-    float voltage;
-
-    device = node->device;
-
-    // Each controller reports its own share of the battery current and of
-    // the torque, so the drive's values are their sums. Speed and voltage are
-    // the master's, and the temperature that matters is the hotter one.
-    current = context->master.current + context->slave.current;
-    veItemOwnerSet(device->current, veVariantFloat(&v, current));
-
-    veItemLocalValue(device->voltage, &v);
-    voltage = v.value.Float;
-    veItemOwnerSet(device->power, veVariantSn32(&v, (sn32)(voltage * current)));
-
-    veItemOwnerSet(device->motorTorque,
-                   veVariantFloat(&v, fabsf(context->master.torque +
-                                            context->slave.torque)));
-
-    veItemOwnerSet(
-        device->motorTemperature,
-        veVariantSn16(&v, higherOf(context->master.motorTemperature,
-                                   context->slave.motorTemperature)));
-    veItemOwnerSet(
-        device->controllerTemperature,
-        veVariantSn16(&v, higherOf(context->master.controllerTemperature,
-                                   context->slave.controllerTemperature)));
-}
 
 static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
     VeVariant v;
@@ -213,18 +96,9 @@ static void onBatteryVoltageResponse(CanOpenPendingSdoRequest *request) {
     voltage = ((sn16)request->response.data) * 0.1F;
 
     veItemOwnerSet(node->device->voltage, veVariantFloat(&v, voltage));
-    if (getContext(node)->slaveNodeId != 0) {
-        // Power follows the combined current, or stays invalid while the
-        // slave is missing.
-        return;
-    }
-    veItemLocalValue(node->device->current, &v);
-    veItemOwnerSet(node->device->power,
-                   veVariantSn32(&v, (sn32)(voltage * v.value.Float)));
 }
 
 static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
-    VeVariant v;
     Node *node;
     DmcContext *context;
     float current;
@@ -234,22 +108,9 @@ static void onBatteryCurrentResponse(CanOpenPendingSdoRequest *request) {
         return;
     }
 
-    context = getContext(node);
     current = ((sn16)request->response.data) * 0.1F;
+    context = GET_DMC_CONTEXT(node);
     context->master.current = current;
-
-    if (context->slaveNodeId != 0) {
-        if (context->slaveMissing) {
-            invalidateShares(node);
-        }
-        return;
-    }
-
-    veItemOwnerSet(node->device->current, veVariantFloat(&v, current));
-
-    veItemLocalValue(node->device->voltage, &v);
-    veItemOwnerSet(node->device->power,
-                   veVariantSn32(&v, (sn32)(v.value.Float * current)));
 }
 
 static void onMotorRpmResponse(CanOpenPendingSdoRequest *request) {
@@ -285,7 +146,6 @@ static void onMotorRpmResponse(CanOpenPendingSdoRequest *request) {
 static void onMotorTemperatureResponse(CanOpenPendingSdoRequest *request) {
     Node *node;
     DmcContext *context;
-    VeVariant v;
     sn16 temperature;
 
     node = (Node *)request->context;
@@ -293,21 +153,14 @@ static void onMotorTemperatureResponse(CanOpenPendingSdoRequest *request) {
         return;
     }
 
-    context = getContext(node);
     temperature = ((un8)request->response.data) - TEMPERATURE_OFFSET;
+    context = GET_DMC_CONTEXT(node);
     context->master.motorTemperature = temperature;
-    if (context->slaveNodeId != 0 && !context->slaveMissing) {
-        return;
-    }
-
-    veItemOwnerSet(node->device->motorTemperature,
-                   veVariantSn16(&v, temperature));
 }
 
 static void onMotorTorqueResponse(CanOpenPendingSdoRequest *request) {
     Node *node;
     DmcContext *context;
-    VeVariant v;
     float torque;
 
     node = (Node *)request->context;
@@ -315,21 +168,14 @@ static void onMotorTorqueResponse(CanOpenPendingSdoRequest *request) {
         return;
     }
 
-    context = getContext(node);
     torque = ((sn16)request->response.data) * 0.1F;
+    context = GET_DMC_CONTEXT(node);
     context->master.torque = torque;
-    if (context->slaveNodeId != 0) {
-        return;
-    }
-
-    veItemOwnerSet(node->device->motorTorque,
-                   veVariantFloat(&v, fabsf(torque)));
 }
 
 static void onControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
     Node *node;
     DmcContext *context;
-    VeVariant v;
     sn16 temperature;
 
     node = (Node *)request->context;
@@ -337,15 +183,9 @@ static void onControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
         return;
     }
 
-    context = getContext(node);
     temperature = ((un8)request->response.data) - TEMPERATURE_OFFSET;
+    context = GET_DMC_CONTEXT(node);
     context->master.controllerTemperature = temperature;
-    if (context->slaveNodeId != 0 && !context->slaveMissing) {
-        return;
-    }
-
-    veItemOwnerSet(node->device->controllerTemperature,
-                   veVariantSn16(&v, temperature));
 }
 
 static void onError(CanOpenPendingSdoRequest *request, CanOpenError error) {
@@ -418,94 +258,95 @@ static void handleFaultSubcode(Node *node, DmcFaultState *state,
 
 static void onFaultCodeResponse(CanOpenPendingSdoRequest *request) {
     Node *node;
+    DmcContext *context;
 
     node = (Node *)request->context;
     if (!node->connected) {
         return;
     }
 
-    getContext(node)->fault.pendingCode = (un8)request->response.data;
+    context = GET_DMC_CONTEXT(node);
+    context->fault.pendingCode = (un8)request->response.data;
 }
 
 static void onFaultSubcodeResponse(CanOpenPendingSdoRequest *request) {
     Node *node;
+    DmcContext *context;
 
     node = (Node *)request->context;
     if (!node->connected) {
         return;
     }
 
-    handleFaultSubcode(node, &getContext(node)->fault, 0,
-                       (un16)request->response.data);
+    context = GET_DMC_CONTEXT(node);
+    handleFaultSubcode(node, &context->fault, 0, (un16)request->response.data);
 }
 
-// Slave reads carry the master's node as their context. Once one has failed
-// in a cycle, the rest of that cycle's slave reads are ignored.
-static DmcContext *getSlaveReadContext(CanOpenPendingSdoRequest *request) {
+static void onSlaveCurrentResponse(CanOpenPendingSdoRequest *request) {
     Node *node;
     DmcContext *context;
 
     node = (Node *)request->context;
     if (!node->connected) {
-        return NULL;
-    }
-    context = getContext(node);
-    if (context->slaveMissing) {
-        return NULL;
-    }
-    return context;
-}
-
-static void onSlaveCurrentResponse(CanOpenPendingSdoRequest *request) {
-    DmcContext *context;
-
-    context = getSlaveReadContext(request);
-    if (context == NULL) {
         return;
     }
+
+    context = GET_DMC_CONTEXT(node);
     context->slave.current = ((sn16)request->response.data) * 0.1F;
 }
 
 static void onSlaveTorqueResponse(CanOpenPendingSdoRequest *request) {
+    Node *node;
     DmcContext *context;
 
-    context = getSlaveReadContext(request);
-    if (context == NULL) {
+    node = (Node *)request->context;
+    if (!node->connected) {
         return;
     }
+
+    context = GET_DMC_CONTEXT(node);
     context->slave.torque = ((sn16)request->response.data) * 0.1F;
 }
 
 static void onSlaveMotorTemperatureResponse(CanOpenPendingSdoRequest *request) {
+    Node *node;
     DmcContext *context;
 
-    context = getSlaveReadContext(request);
-    if (context == NULL) {
+    node = (Node *)request->context;
+    if (!node->connected) {
         return;
     }
+
+    context = GET_DMC_CONTEXT(node);
     context->slave.motorTemperature =
         ((un8)request->response.data) - TEMPERATURE_OFFSET;
 }
 
 static void
 onSlaveControllerTemperatureResponse(CanOpenPendingSdoRequest *request) {
+    Node *node;
     DmcContext *context;
 
-    context = getSlaveReadContext(request);
-    if (context == NULL) {
+    node = (Node *)request->context;
+    if (!node->connected) {
         return;
     }
+
+    context = GET_DMC_CONTEXT(node);
     context->slave.controllerTemperature =
         ((un8)request->response.data) - TEMPERATURE_OFFSET;
 }
 
 static void onSlaveFaultCodeResponse(CanOpenPendingSdoRequest *request) {
+    Node *node;
     DmcContext *context;
 
-    context = getSlaveReadContext(request);
-    if (context == NULL) {
+    node = (Node *)request->context;
+    if (!node->connected) {
         return;
     }
+
+    context = GET_DMC_CONTEXT(node);
     context->slaveFault.pendingCode = (un8)request->response.data;
 }
 
@@ -514,13 +355,12 @@ static void onSlaveFaultSubcodeResponse(CanOpenPendingSdoRequest *request) {
     Node *node;
     DmcContext *context;
 
-    context = getSlaveReadContext(request);
-    if (context == NULL) {
+    node = (Node *)request->context;
+    if (!node->connected) {
         return;
     }
-    node = (Node *)request->context;
 
-    publishCombined(node, context);
+    context = GET_DMC_CONTEXT(node);
     handleFaultSubcode(node, &context->slaveFault, request->nodeId,
                        (un16)request->response.data);
 }
@@ -529,87 +369,185 @@ static void onSlaveError(CanOpenPendingSdoRequest *request,
                          CanOpenError error) {
     Node *node;
     DmcContext *context;
-    VeVariant v;
     VeStr deviceName;
     char description[255];
-
-    context = getSlaveReadContext(request);
-    if (context == NULL) {
-        return;
-    }
-    node = (Node *)request->context;
-
-    context->slaveMissing = veTrue;
-    warning("Slave node %u of node %u is not responding", request->nodeId,
-            node->device->nodeId);
-
-    // The master's readings of this cycle are already in, so its own
-    // temperatures can still be shown. They are a lower bound for the drive.
-    invalidateShares(node);
-    veItemOwnerSet(node->device->motorTemperature,
-                   veVariantSn16(&v, context->master.motorTemperature));
-    veItemOwnerSet(node->device->controllerTemperature,
-                   veVariantSn16(&v, context->master.controllerTemperature));
-
-    getDeviceDisplayName(node->device, &deviceName);
-    snprintf(description, sizeof(description), "%s, slave node %u",
-             veStrCStr(&deviceName), request->nodeId);
-    queueNotification(node->device->nodeId, NOTIFICATION_TYPE_WARNING,
-                      "Slave controller not responding", description);
-    veStrFree(&deviceName);
-}
-
-static void onSlaveProbeResponse(CanOpenPendingSdoRequest *request) {
-    Node *node;
 
     node = (Node *)request->context;
     if (!node->connected) {
         return;
     }
 
+    context = GET_DMC_CONTEXT(node);
+
+    if (context->slaveConnected && error == SDO_READ_ERROR_TIMEOUT) {
+        warning("Slave node %u of node %u is not responding", request->nodeId,
+                node->device->nodeId);
+        getDeviceDisplayName(node->device, &deviceName);
+        snprintf(description, sizeof(description), "%s, slave node %u",
+                 veStrCStr(&deviceName), request->nodeId);
+        queueNotification(node->device->nodeId, NOTIFICATION_TYPE_WARNING,
+                          "Slave controller not responding", description);
+        veStrFree(&deviceName);
+    }
+
+    context->slaveConnected = veFalse;
+}
+
+static void onSlaveProbeResponse(CanOpenPendingSdoRequest *request) {
+    Node *node;
+    DmcContext *context;
+
+    node = (Node *)request->context;
+    if (!node->connected) {
+        return;
+    }
+
+    context = GET_DMC_CONTEXT(node);
+    context->slaveConnected = veTrue;
     info("Slave node %u of node %u is responding again", request->nodeId,
          node->device->nodeId);
-    getContext(node)->slaveMissing = veFalse;
 }
 
 static void onSlaveProbeError(CanOpenPendingSdoRequest *request,
                               CanOpenError error) {}
 
-static void readSlave(Node *node, DmcContext *context) {
-    un8 slaveNodeId;
+static void publishSingleDrive(Node *node, DmcContext *context) {
+    VeVariant v;
+    VeVariant voltage;
+    VeVariant current;
 
-    slaveNodeId = context->slaveNodeId;
-    if (context->slaveMissing) {
-        // A single read per cycle until the slave answers again, rather than
-        // a time out on every one of its reads.
-        canOpenReadSdoAsync(slaveNodeId, 0x383e, 0, node, onSlaveProbeResponse,
-                            onSlaveProbeError);
+    veItemOwnerSet(node->device->current,
+                   veVariantFloat(&v, context->master.current));
+    veItemOwnerSet(node->device->motorTorque,
+                   veVariantFloat(&v, fabsf(context->master.torque)));
+
+    veItemLocalValue(node->device->voltage, &voltage);
+    veItemLocalValue(node->device->current, &current);
+    veItemOwnerSet(
+        node->device->power,
+        veVariantSn32(&v, (sn32)(voltage.value.Float * current.value.Float)));
+
+    veItemOwnerSet(node->device->motorTemperature,
+                   veVariantSn16(&v, context->master.motorTemperature));
+    veItemOwnerSet(node->device->controllerTemperature,
+                   veVariantSn16(&v, context->master.controllerTemperature));
+}
+
+static void publishDualDrive(Node *node, DmcContext *context) {
+    VeVariant v;
+    VeVariant voltage;
+    VeVariant current;
+
+    if (!context->slaveProbing && context->slaveConnected) {
+        veItemOwnerSet(node->device->current,
+                       veVariantFloat(&v, context->master.current +
+                                              context->slave.current));
+        veItemLocalValue(node->device->voltage, &voltage);
+        veItemLocalValue(node->device->current, &current);
+        veItemOwnerSet(node->device->power,
+                       veVariantSn32(&v, (sn32)(voltage.value.Float *
+                                                current.value.Float)));
+
+        veItemOwnerSet(node->device->motorTorque,
+                       veVariantFloat(&v, fabsf(context->master.torque +
+                                                context->slave.torque)));
+        veItemOwnerSet(
+            node->device->motorTemperature,
+            veVariantSn16(&v, higherOf(context->master.motorTemperature,
+                                       context->slave.motorTemperature)));
+        veItemOwnerSet(
+            node->device->controllerTemperature,
+            veVariantSn16(&v, higherOf(context->master.controllerTemperature,
+                                       context->slave.controllerTemperature)));
+    } else {
+        veItemOwnerSet(node->device->current,
+                       veVariantInvalidType(&v, VE_FLOAT));
+        veItemOwnerSet(node->device->power, veVariantInvalidType(&v, VE_SN32));
+        veItemOwnerSet(node->device->motorTorque,
+                       veVariantInvalidType(&v, VE_FLOAT));
+
+        veItemOwnerSet(node->device->motorTemperature,
+                       veVariantSn16(&v, context->master.motorTemperature));
+        veItemOwnerSet(
+            node->device->controllerTemperature,
+            veVariantSn16(&v, context->master.controllerTemperature));
+    }
+}
+
+static void onReadComplete(CanOpenPendingSdoRequest *request) {
+    Node *node;
+    DmcContext *context;
+
+    node = (Node *)request->context;
+    if (!node->connected) {
         return;
     }
 
-    canOpenReadSdoAsync(slaveNodeId, 0x383e, 0, node, onSlaveCurrentResponse,
-                        onSlaveError);
-    canOpenReadSdoAsync(slaveNodeId, 0x411c, 0, node, onSlaveTorqueResponse,
-                        onSlaveError);
-    canOpenReadSdoAsync(slaveNodeId, 0x3836, 0, node,
+    context = GET_DMC_CONTEXT(node);
+    if (context->slaveNodeId == 0) {
+        publishSingleDrive(node, context);
+    } else {
+        publishDualDrive(node, context);
+    }
+}
+
+static void readSlave(Node *node, DmcContext *context) {
+    if (!context->slaveConnected) {
+        context->slaveProbing = veTrue;
+        canOpenReadSdoAsync(context->slaveNodeId, 0x383e, 0, node,
+                            onSlaveProbeResponse, onSlaveProbeError);
+        return;
+    }
+
+    context->slaveProbing = veFalse;
+    canOpenReadSdoAsync(context->slaveNodeId, 0x383e, 0, node,
+                        onSlaveCurrentResponse, onSlaveError);
+    canOpenReadSdoAsync(context->slaveNodeId, 0x411c, 0, node,
+                        onSlaveTorqueResponse, onSlaveError);
+    canOpenReadSdoAsync(context->slaveNodeId, 0x3836, 0, node,
                         onSlaveMotorTemperatureResponse, onSlaveError);
-    canOpenReadSdoAsync(slaveNodeId, 0x3837, 0, node,
+    canOpenReadSdoAsync(context->slaveNodeId, 0x3837, 0, node,
                         onSlaveControllerTemperatureResponse, onSlaveError);
-    canOpenReadSdoAsync(slaveNodeId, 0x3840, 0, node, onSlaveFaultCodeResponse,
-                        onSlaveError);
-    canOpenReadSdoAsync(slaveNodeId, 0x3841, 0, node,
+    canOpenReadSdoAsync(context->slaveNodeId, 0x3840, 0, node,
+                        onSlaveFaultCodeResponse, onSlaveError);
+    canOpenReadSdoAsync(context->slaveNodeId, 0x3841, 0, node,
                         onSlaveFaultSubcodeResponse, onSlaveError);
+}
+
+static un8 resolveSlaveNodeId(Node *node, DmcContext *context) {
+    VeVariant v;
+    un8 nodeId;
+    sn32 slaveNodeId;
+
+    if (context->slaveNodeIdSetting == NULL) {
+        // Not a master, or 0x2403 has not answered yet.
+        return 0;
+    }
+    veItemLocalValue(context->slaveNodeIdSetting, &v);
+    if (!veVariantIsValid(&v)) {
+        // Not loaded from localsettings yet.
+        return 0;
+    }
+
+    nodeId = node->device->nodeId;
+    slaveNodeId = v.value.SN32;
+    if (slaveNodeId < 1 || slaveNodeId > 127 || slaveNodeId == nodeId ||
+        isNodeConnected((un8)slaveNodeId)) {
+        return 0;
+    }
+    return (un8)slaveNodeId;
 }
 
 static void readRoutine(Node *node) {
     DmcContext *context;
     un8 slaveNodeId;
 
-    context = getContext(node);
+    context = GET_DMC_CONTEXT(node);
+
     slaveNodeId = resolveSlaveNodeId(node, context);
     if (slaveNodeId != context->slaveNodeId) {
         context->slaveNodeId = slaveNodeId;
-        context->slaveMissing = veFalse;
+        context->slaveConnected = veFalse;
         memset(&context->slaveFault, 0, sizeof(context->slaveFault));
     }
 
@@ -630,9 +568,10 @@ static void readRoutine(Node *node) {
     canOpenReadSdoAsync(node->device->nodeId, 0x3841, 0, node,
                         onFaultSubcodeResponse, onError);
 
-    if (slaveNodeId != 0) {
+    if (context->slaveNodeId != 0) {
         readSlave(node, context);
     }
+    canOpenQueueCallbackAsync(node, onReadComplete);
 }
 
 static void fastReadRoutine(Node *node) {
@@ -661,7 +600,7 @@ static void onEMCYMessage(Node *node, VeRawCanMsg *message) {
     faultSubcode = message->mdata[4] | (message->mdata[5] << 8) |
                    (message->mdata[6] << 16) | ((un32)message->mdata[7] << 24);
 
-    context = getContext(node);
+    context = GET_DMC_CONTEXT(node);
 
     if (errorCode == 0) {
         // Fault cleared. Forget the reported fault so that it is announced
@@ -684,19 +623,54 @@ static void onEMCYMessage(Node *node, VeRawCanMsg *message) {
     reportFault(node, 0, faultCode, faultSubcode);
 }
 
-static void *createDriverContext(Node *node) {
+static void
+onDualMotorConfigurationResponse(CanOpenPendingSdoRequest *request) {
+    Node *node;
     DmcContext *context;
     char settingsPath[128];
+
+    node = (Node *)request->context;
+    if (!node->connected) {
+        return;
+    }
+
+    if ((un8)request->response.data != DMC_DUAL_MOTOR_MASTER) {
+        return;
+    }
+
+    snprintf(settingsPath, sizeof(settingsPath), "Settings/Devices/%s",
+             node->device->identifier);
+    context = GET_DMC_CONTEXT(node);
+    context->slaveNodeIdSetting = veItemCreateSettingsProxyId(
+        localSettings, settingsPath, node->device->root, "SlaveNodeId",
+        veVariantFmt, &veUnitNone, &slaveNodeIdType, "Settings/SlaveNodeId");
+}
+
+static void onDualMotorConfigurationError(CanOpenPendingSdoRequest *request,
+                                          CanOpenError error) {
+    Node *node;
+
+    node = (Node *)request->context;
+    if (!node->connected) {
+        return;
+    }
+    if (error == SDO_READ_ERROR_TIMEOUT) {
+        disconnectFromNode(node->device->nodeId);
+    }
+    // Otherwise the firmware has no 0x2403 and no dual motor support either.
+}
+
+static void *createDriverContext(Node *node) {
+    DmcContext *context;
 
     context = _malloc(sizeof(*context));
     CHECK_ALLOC(context);
     memset(context, 0, sizeof(*context));
+    context->slaveConnected = veFalse;
 
-    snprintf(settingsPath, sizeof(settingsPath), "Settings/Devices/%s",
-             node->device->identifier);
-    context->slaveNodeIdSetting = veItemCreateSettingsProxy(
-        localSettings, settingsPath, node->device->root, "SlaveNodeId",
-        veVariantFmt, &veUnitNone, &slaveNodeIdType);
+    canOpenReadSdoAsync(node->device->nodeId, 0x2403, 0, node,
+                        onDualMotorConfigurationResponse,
+                        onDualMotorConfigurationError);
 
     return (void *)context;
 }

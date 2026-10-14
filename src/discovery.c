@@ -53,15 +53,9 @@ static void onCurtisModelNumberError(CanOpenPendingSdoRequest *request,
     onError((DiscoveryContext *)request->context);
 }
 
-// The slave of a 6-phase pair is read through its master, so it is not a
-// motor drive of its own.
 static void
 onDmcDualMotorConfigurationResponse(CanOpenPendingSdoRequest *request) {
-    un8 configuration;
-
-    configuration = (un8)request->response.data;
-    dmcRecordDualMotorConfiguration(request->nodeId, configuration);
-    if (configuration == DMC_DUAL_MOTOR_SLAVE) {
+    if ((un8)request->response.data == DMC_DUAL_MOTOR_SLAVE) {
         onError((DiscoveryContext *)request->context);
     } else {
         onSuccess((DiscoveryContext *)request->context, &dmcDriver);
