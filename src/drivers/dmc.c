@@ -74,9 +74,6 @@ static un8 dualMotorConfigurations[127];
 static veBool dualMotorConfigurationKnown[127];
 
 void dmcRecordDualMotorConfiguration(un8 nodeId, un8 configuration) {
-    if (nodeId == 0 || nodeId > 127) {
-        return;
-    }
     dualMotorConfigurations[nodeId - 1] = configuration;
     dualMotorConfigurationKnown[nodeId - 1] = veTrue;
 }

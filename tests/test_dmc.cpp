@@ -805,10 +805,10 @@ TEST_F(DmcDualMotorTest, combinesMasterAndSlave) {
     EXPECT_EQ(this->canMsgSentLog.at(13).canId, 0x602);
 
     device = nodes[0].device;
-    EXPECT_NEAR(device->voltage->variant.value.Float, 51.8F, 0.001F);
-    EXPECT_NEAR(device->current->variant.value.Float, 28.2F, 0.001F);
+    EXPECT_FLOAT_EQ(device->voltage->variant.value.Float, 51.8F);
+    EXPECT_FLOAT_EQ(device->current->variant.value.Float, 28.2F);
     EXPECT_EQ(device->power->variant.value.SN32, 1460);
-    EXPECT_NEAR(device->motorTorque->variant.value.Float, 38.5F, 0.001F);
+    EXPECT_FLOAT_EQ(device->motorTorque->variant.value.Float, 38.5F);
     EXPECT_EQ(device->motorRpm->variant.value.UN16, 1408);
     EXPECT_EQ(device->motorDirection->variant.value.UN8, 2);
     EXPECT_EQ(device->motorTemperature->variant.value.SN16, 33);
@@ -823,12 +823,30 @@ TEST_F(DmcDualMotorTest, pairsWithTheOnlySlaveDiscovered) {
 
     readCombinedCycle();
 
-    EXPECT_NEAR(nodes[0].device->current->variant.value.Float, 28.2F, 0.001F);
+    EXPECT_FLOAT_EQ(nodes[0].device->current->variant.value.Float, 28.2F);
 
     // Kept, because after a restart the slave is not discovered again.
     EXPECT_EQ(((DmcContext *)nodes[0].device->driverContext)
                   ->slaveNodeIdSetting->variant.value.SN32,
               2);
+}
+
+// On a GX the write goes to localsettings over D-Bus, so the next cycle can
+// still read 0 and find the same slave. It is not written a second time. The
+// fake applies writes at once, so the setting is put back to 0 by hand.
+TEST_F(DmcDualMotorTest, savesTheSlaveOnce) {
+    dmcRecordDualMotorConfiguration(2, DMC_DUAL_MOTOR_SLAVE);
+    connectToDmcNode(DMC_DUAL_MOTOR_MASTER);
+    setSlaveNodeId(0);
+
+    readCombinedCycle();
+    setSlaveNodeId(0);
+
+    readCombinedCycle();
+    EXPECT_FLOAT_EQ(nodes[0].device->current->variant.value.Float, 28.2F);
+    EXPECT_EQ(((DmcContext *)nodes[0].device->driverContext)
+                  ->slaveNodeIdSetting->variant.value.SN32,
+              0);
 }
 
 TEST_F(DmcDualMotorTest, doesNotGuessBetweenTwoSlaves) {
@@ -868,6 +886,20 @@ TEST_F(DmcDualMotorTest, ignoresItsOwnNodeId) {
     EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 8);
 }
 
+// The setting declares 0 to 127, but nothing guarantees localsettings holds to
+// that, and the value becomes a CAN identifier.
+TEST_F(DmcDualMotorTest, ignoresAnOutOfRangeSlaveNodeId) {
+    connectToDmcNode(DMC_DUAL_MOTOR_MASTER);
+
+    setSlaveNodeId(-1);
+    nodes[0].device->driver->readRoutine(&nodes[0]);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 8);
+
+    setSlaveNodeId(128);
+    nodes[0].device->driver->readRoutine(&nodes[0]);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 16);
+}
+
 // Half the current, power and torque would read as the whole drive, so they
 // are withheld while the slave is missing. The master stays connected, keeps
 // its speed, voltage and own temperatures, and probes the slave with a single
@@ -894,7 +926,7 @@ TEST_F(DmcDualMotorTest, slaveMissing) {
     EXPECT_FALSE(isValid(device->current));
     EXPECT_FALSE(isValid(device->power));
     EXPECT_FALSE(isValid(device->motorTorque));
-    EXPECT_NEAR(device->voltage->variant.value.Float, 51.8F, 0.001F);
+    EXPECT_FLOAT_EQ(device->voltage->variant.value.Float, 51.8F);
     EXPECT_EQ(device->motorRpm->variant.value.UN16, 1408);
     EXPECT_EQ(device->motorTemperature->variant.value.SN16, 30);
     EXPECT_EQ(device->controllerTemperature->variant.value.SN16, 28);
@@ -927,7 +959,7 @@ TEST_F(DmcDualMotorTest, slaveMissing) {
     drainQueue(queue);
 
     readCombinedCycle();
-    EXPECT_NEAR(device->current->variant.value.Float, 28.2F, 0.001F);
+    EXPECT_FLOAT_EQ(device->current->variant.value.Float, 28.2F);
     EXPECT_EQ(device->power->variant.value.SN32, 1460);
     EXPECT_EQ(device->motorTemperature->variant.value.SN16, 33);
 
@@ -971,4 +1003,68 @@ TEST_F(DmcDualMotorTest, masterMissing) {
     pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
     processPendingNotifications();
     EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
+}
+
+// Disconnecting does not empty the request queue, so the slave can still
+// answer reads queued by a master that has just been dropped. Its answers are
+// ignored.
+TEST_F(DmcDualMotorTest, masterLostMidCycle) {
+    std::vector<VeRawCanMsg> queue;
+
+    connectToDmcNode(DMC_DUAL_MOTOR_MASTER);
+    setSlaveNodeId(2);
+
+    nodes[0].device->driver->readRoutine(&nodes[0]);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 14);
+
+    // The master answers all but its last read, 0x3841, which times out.
+    pushMasterReadings(queue);
+    queue.pop_back();
+    drainQueue(queue);
+    canOpenTx();
+    pltGetCount1ms_fake.return_val += 50;
+    canOpenTx();
+    EXPECT_EQ(nodes[0].connected, veFalse);
+
+    pushSlaveReadings(queue, 13, 2);
+    drainQueue(queue);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 0);
+
+    pltGetCount1ms_fake.return_val += NOTIFICATION_INJECTION_DELAY_MS;
+    processPendingNotifications();
+    EXPECT_EQ(injectPlatformNotification_fake.call_count, 0);
+}
+
+// The same while the slave is missing, when the cycle only probes it.
+TEST_F(DmcDualMotorTest, masterLostWhileProbing) {
+    std::vector<VeRawCanMsg> queue;
+
+    connectToDmcNode(DMC_DUAL_MOTOR_MASTER);
+    setSlaveNodeId(2);
+
+    // The slave does not answer, so it is marked missing.
+    nodes[0].device->driver->readRoutine(&nodes[0]);
+    pushMasterReadings(queue);
+    drainQueue(queue);
+    while (listCount(canOpenState.pendingSdoRequests) > 0) {
+        canOpenTx();
+        pltGetCount1ms_fake.return_val += 50;
+        canOpenTx();
+    }
+    EXPECT_EQ(nodes[0].connected, veTrue);
+
+    // Next cycle: the master's 0x3841 times out, then the probe answers.
+    nodes[0].device->driver->readRoutine(&nodes[0]);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 9);
+    pushMasterReadings(queue);
+    queue.pop_back();
+    drainQueue(queue);
+    canOpenTx();
+    pltGetCount1ms_fake.return_val += 50;
+    canOpenTx();
+    EXPECT_EQ(nodes[0].connected, veFalse);
+
+    queue.push_back(response(2, 0x4B, 0x383E, 149));
+    drainQueue(queue);
+    EXPECT_EQ(listCount(canOpenState.pendingSdoRequests), 0);
 }
