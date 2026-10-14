@@ -65,7 +65,11 @@ void un8ArrayDeserialize(Un8Array *array, VeItem *item) {
 
     while (start != NULL && *start) {
         long value = strtol(start, &end, 10);
-        un8ArrayAdd(array, (un8)value);
+        if (value >= 1 && value <= 127) {
+            un8ArrayAdd(array, (un8)value);
+        } else {
+            warning("Ignoring invalid node ID %ld", value);
+        }
         if (*end == ',') {
             start = end + 1;
         } else {
