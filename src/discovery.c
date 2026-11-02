@@ -53,9 +53,30 @@ static void onCurtisModelNumberError(CanOpenPendingSdoRequest *request,
     onError((DiscoveryContext *)request->context);
 }
 
+static void
+onDmcDualMotorConfigurationResponse(CanOpenPendingSdoRequest *request) {
+    if ((un8)request->response.data == DMC_DUAL_MOTOR_SLAVE) {
+        onError((DiscoveryContext *)request->context);
+    } else {
+        onSuccess((DiscoveryContext *)request->context, &dmcDriver);
+    }
+}
+
+static void onDmcDualMotorConfigurationError(CanOpenPendingSdoRequest *request,
+                                             CanOpenError error) {
+    if (error != SDO_READ_ERROR_TIMEOUT) {
+        // Firmware without 0x2403 has no dual motor support either.
+        onSuccess((DiscoveryContext *)request->context, &dmcDriver);
+    } else {
+        onError((DiscoveryContext *)request->context);
+    }
+}
+
 static void onDmcProductCodeResponse(CanOpenPendingSdoRequest *request) {
     if (request->response.data == DMC_SIGMA2N_PRODUCT_CODE) {
-        onSuccess((DiscoveryContext *)request->context, &dmcDriver);
+        canOpenReadSdoAsync(request->nodeId, 0x2403, 0, request->context,
+                            onDmcDualMotorConfigurationResponse,
+                            onDmcDualMotorConfigurationError);
     } else {
         onError((DiscoveryContext *)request->context);
     }

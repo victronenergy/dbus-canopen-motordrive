@@ -126,6 +126,26 @@ supported.
 The node ID and the bit rate are set with the DMC Calibrator. The controller
 supports 250 and 500 kbit/s, so either CAN-bus profile works.
 
+### DMC Sigma2N 6-phase motors (dual motor master and slave)
+
+A 6-phase motor is driven by two Sigma2N controllers: a master and a slave
+that follows the master's torque. This is set on each controller with the
+parameter M2-5 "DMconfig" (object 0x2403): 3 on the master, 4 on the slave.
+The slave's node ID must be the master's node ID plus one, for example master
+at node 1 and slave at node 2. A master can therefore not use node ID 127: a
+master at node 127 is shown as a single motor drive, without its slave.
+
+The pair is shown as a single motor drive, the master's:
+
+* The slave is never listed as a motor drive of its own.
+* Current, power and torque are the sums of both controllers. Speed and
+  voltage are the master's, and each temperature is the hotter of the two.
+* If the slave stops responding, a warning is raised once. Current, power and
+  torque are then shown as invalid, and the master's own temperatures are
+  shown, until the slave responds again.
+* A fault on the slave is reported on the master and names the slave's node
+  ID.
+
 ## How to configure the Victron GX product
 
 Requires Venus OS version 3.70~45 or later.
@@ -199,3 +219,7 @@ Note that the device power is calculated as Capacitor Volts * Battery Current wh
 | 0x3837 | 0 | Controller Temperature, degrees C with a -51 offset |
 | 0x3840 | 0 | Fault Code |
 | 0x3841 | 0 | Fault Subcode |
+| 0x2403 | 0 | Dual Motor Configuration, 3 = master, 4 = slave of a 6-phase motor |
+
+For a 6-phase motor, the slave's 0x383E, 0x411C, 0x3836, 0x3837, 0x3840 and
+0x3841 are read as well, at the master's node ID plus one.
